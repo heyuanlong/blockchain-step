@@ -10,16 +10,21 @@ import (
 
 type Account struct {
 	Address common.Address `json:"address"` // Ethereum account address derived from the key
+	URL     URL            `json:"url"`     // Optional resource locator within a backend
 }
 
 // Wallet represents a software or hardware wallet that might contain one or more
 // accounts (derived from the same seed).
 type Wallet interface {
+	//打开钱包
 	Open(dir string,passphrase string) error
+	//关闭
 	Close() error
 
 	//备份钱包
-	BackUp() error
+	BackUpWallet() error
+	//导入钱包
+	ImportWallet(dir string,passphrase string) error
 	//导出账户
 	Export(Account) (*crypto.PrivateKey,error)
 	//导入账户
