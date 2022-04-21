@@ -4,6 +4,8 @@ import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
+type PublicKey = secp.PublicKey
+
 // These constants define the lengths of serialized public keys.
 const (
 	PubKeyBytesLenCompressed = 33
@@ -28,17 +30,17 @@ func IsCompressedPubKey(pubKey []byte) bool {
 // ParsePubKey parses a public key for a koblitz curve from a bytestring into a
 // ecdsa.Publickey, verifying that it is valid. It supports compressed,
 // uncompressed and hybrid signature formats.
-func ParsePubKey(pubKeyStr []byte) (*secp.PublicKey, error) {
+func ParsePubKey(pubKeyStr []byte) (*PublicKey, error) {
 	return secp.ParsePubKey(pubKeyStr)
 }
 
 // SerializeUncompressed serializes a public key in the 65-byte uncompressed
 // format.
-func SerializeUncompressed(pub *secp.PublicKey) []byte {
+func SerializeUncompressed(pub *PublicKey) []byte {
 	return pub.SerializeUncompressed()
 }
 
 // SerializeCompressed serializes a public key in the 33-byte compressed format.
-func SerializeCompressed(pub *secp.PublicKey) []byte {
+func SerializeCompressed(pub *PublicKey) []byte {
 	return pub.SerializeCompressed()
 }
