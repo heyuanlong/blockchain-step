@@ -2,15 +2,15 @@ package fileWallet
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"heyuanlong/blockchain-step/common"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
-
-
 
 type keyStore interface {
 	// Loads and decrypts the key from disk.
@@ -21,9 +21,35 @@ type keyStore interface {
 	JoinPath(filename string) string
 }
 
+func writeTemporaryKeyFile(file string, content []byte) (string, error) {
+	// Create the keystore directory with appropriate permissions
+	// in case it is not present yet.
+	const dirPerm = 0700
+	if err := os.MkdirAll(filepath.Dir(file), dirPerm); err != nil {
+		return "", err
+	}
+	// Atomic write: create a temporary hidden file first
+	// then move it into place. TempFile assigns mode 0600.
+	f, err := ioutil.TempFile(filepath.Dir(file), "."+filepath.Base(file)+".tmp")
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.Write(content); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return "", err
+	}
+	f.Close()
+	return f.Name(), nil
+}
 
-
-
+func writeKeyFile(file string, content []byte) error {
+	name, err := writeTemporaryKeyFile(file, content)
+	if err != nil {
+		return err
+	}
+	return os.Rename(name, file)
+}
 
 // keyFileName implements the naming convention for keyfiles:
 // UTC--<created_at UTC ISO8601>-<address hex>
@@ -57,9 +83,19 @@ func nonKeyFile(fi os.FileInfo) bool {
 	return false
 }
 
-func JoinPath(dir string,filename string) string {
+///---------------------------------------------------
+
+func StoreKey(filename string, key *Key) error {
+	content, err := json.Marshal(key)
+	if err != nil {
+		return err
+	}
+	return writeKeyFile(filename, content)
+}
+
+func JoinPath(dir string, filename string) string {
 	if filepath.IsAbs(filename) {
-	return filename
+		return filename
 	}
 	return filepath.Join(dir, filename)
 }

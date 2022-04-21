@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"golang.org/x/crypto/sha3"
+	"math/big"
 )
 
-const(
+const (
 	AddressLength = 20
 )
+
 /////////// Address
 
 // Address represents the 20 byte address of an Ethereum account.
 type Address [AddressLength]byte
-
 
 // BytesToAddress returns Address with value b.
 // If b is larger than len(h), b will be cropped from the left.
@@ -119,4 +119,3 @@ func (a *Address) SetBytes(b []byte) {
 	}
 	copy(a[AddressLength-len(b):], b)
 }
-

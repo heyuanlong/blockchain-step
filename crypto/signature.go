@@ -53,7 +53,7 @@ func RecoverCompact(signature, hash []byte) (*secp.PublicKey, bool, error) {
 
 // Output <compactSigRecoveryCode><32-byte R><32-byte S>.
 func Sign(priv *secp.PrivateKey, hash []byte) []byte {
-	return  secp_ecdsa.SignCompact(priv, hash, false) // ref uncompressed pubkey
+	return secp_ecdsa.SignCompact(priv, hash, false) // ref uncompressed pubkey
 }
 
 func VerifySignature(pubkey, hash, signature []byte) bool {
@@ -93,7 +93,6 @@ func SigToPub(hash, sig []byte) (*ecdsa.PublicKey, error) {
 	}
 	return pub.ToECDSA(), nil
 }
-
 
 func sigToPub(hash, sig []byte) (*secp.PublicKey, error) {
 	if len(sig) != 65 {

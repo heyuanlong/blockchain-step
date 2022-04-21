@@ -17,7 +17,6 @@ const (
 	pubkeyHybrid       byte = 0x6 // y_bit + x coord + y coord
 )
 
-
 // IsCompressedPubKey returns true the the passed serialized public key has
 // been encoded in compressed format, and false otherwise.
 func IsCompressedPubKey(pubKey []byte) bool {

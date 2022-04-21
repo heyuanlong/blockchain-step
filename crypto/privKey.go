@@ -11,26 +11,24 @@ func S256() *secp.KoblitzCurve {
 	return secp.S256()
 }
 
-
 // NewPrivateKey is a wrapper for ecdsa.GenerateKey that returns a PrivateKey
 // instead of the normal ecdsa.PrivateKey.
 func NewPrivateKey() (*PrivateKey, error) {
 	return secp.GeneratePrivateKey()
 }
 
-func  PubKey(p *PrivateKey) *secp.PublicKey {
+func PubKey(p *PrivateKey) *secp.PublicKey {
 	return p.PubKey()
 }
 
 // PrivKeyFromBytes returns a private and public key for `curve' based on the
 // private key passed as an argument as a byte slice.
-func PrivKeyFromBytes(pk []byte) (*PrivateKey, *secp.PublicKey) {
+func PrivKeyFromBytes(pk []byte) (*PrivateKey) {
 	privKey := secp.PrivKeyFromBytes(pk)
 
-	return privKey, privKey.PubKey()
+	return privKey
 }
 
-func  Serialize(p *PrivateKey) []byte {
+func Serialize(p *PrivateKey) []byte {
 	return p.Serialize()
 }
-
