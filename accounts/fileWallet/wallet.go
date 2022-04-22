@@ -1,7 +1,6 @@
 package fileWallet
 
 import (
-	"encoding/json"
 	"errors"
 	log "github.com/sirupsen/logrus"
 	"heyuanlong/blockchain-step/accounts"
@@ -10,8 +9,6 @@ import (
 	"heyuanlong/blockchain-step/crypto"
 	"io/ioutil"
 	"math/big"
-	"os"
-	"path/filepath"
 )
 
 type FileWallet struct {
@@ -21,11 +18,15 @@ type FileWallet struct {
 	dir        string
 	passPhrase string
 	AddrMap    map[common.Address]*Key
+
+	store StoreI
 }
 
 func NewFileWallet() *FileWallet {
+
 	return &FileWallet{
 		Scheme: "file",
+		store :NewStoreFile(),
 	}
 }
 
@@ -37,7 +38,7 @@ func (w *FileWallet) Open(dir string, passphrase string) error {
 	w.dir = dir
 	w.passPhrase = passphrase
 	w.isOpen = true
-	if err := w.load(); err != nil {
+	if err := w.loadAll(); err != nil {
 		return err
 	}
 
@@ -95,11 +96,11 @@ func (w *FileWallet) Import(priv *crypto.PrivateKey) error {
 
 	key := new(Key)
 	key.Account.Address = crypto.PubkeyToAddress2(priv.PubKey())
-	key.URL = accounts.URL{Scheme: w.Scheme, Path: JoinPath(w.dir, keyFileName(key.Account.Address))}
+	key.URL = accounts.URL{Scheme: w.Scheme, Path: w.store.JoinPath(w.dir, key.Account.Address.String())}
 	key.PrivateKeyAes = common.Bytes2Hex(common.AESEncrypt(crypto.Serialize(priv), []byte(w.passPhrase)))
 
 	w.AddrMap[key.Account.Address] = key
-	StoreKey(key.URL.Path,key)
+	w.store.StoreKey(key.URL.Path,key,w.passPhrase)
 
 	return nil
 }
@@ -112,11 +113,11 @@ func (w *FileWallet) CreateAccount() accounts.Account {
 	}
 	key := new(Key)
 	key.Account.Address = crypto.PubkeyToAddress2(priv.PubKey())
-	key.URL = accounts.URL{Scheme: w.Scheme, Path: JoinPath(w.dir, keyFileName(key.Account.Address))}
+	key.URL = accounts.URL{Scheme: w.Scheme, Path: w.store.JoinPath(w.dir, key.Account.Address.String())}
 	key.PrivateKeyAes = common.Bytes2Hex(common.AESEncrypt(priv.Serialize(), []byte(w.passPhrase)))
 
 	w.AddrMap[key.Account.Address] = key
-	StoreKey(key.URL.Path,key)
+	w.store.StoreKey(key.URL.Path,key,w.passPhrase)
 
 	return key.Account
 }
@@ -152,34 +153,31 @@ func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase
 }
 
 
-func (w *FileWallet) SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
-	return nil, nil
+func (w *FileWallet) SignTx(account accounts.Account, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error) {
+	data, _ := tx.Bytes()
+	priv,err := w.Export(account)
+	if err != nil{
+		log.Error(account.Address.String(), "Export fail",err)
+		return nil, err
+	}
+	tx.SetSign(crypto.Sign(priv,data))
+	return tx, nil
 }
-func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
+func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error) {
 	return nil, nil
 }
 
 //-----------------------------------------------------------------
-func (w *FileWallet) load() error {
+func (w *FileWallet) loadAll() error {
 	files, err := ioutil.ReadDir(w.dir)
 	if err != nil {
 		return err
 	}
 	for _, fi := range files {
-		path := filepath.Join(w.dir, fi.Name())
-		// Skip any non-key files from the folder
-		if nonKeyFile(fi) {
-			log.Trace("Ignoring file on account scan", "path", path)
-			continue
-		}
-		fd, err := os.Open(path)
+		key ,err :=w.store.GetKey(common.Address{}, w.dir,fi.Name(),w.passPhrase)
 		if err != nil {
-			return err
-		}
-		defer fd.Close()
-		key := new(Key)
-		if err := json.NewDecoder(fd).Decode(key); err != nil {
-			return err
+			log.Trace("GetKey file ", w.dir,fi.Name())
+			continue
 		}
 		w.AddrMap[key.Account.Address] = key
 	}

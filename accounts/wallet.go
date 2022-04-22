@@ -41,6 +41,6 @@ type Wallet interface {
 	SignText(account Account, text []byte) ([]byte, error)
 	SignTextWithPassphrase(account Account, passphrase string, hash []byte) ([]byte, error)
 
-	SignTx(account Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
-	SignTxWithPassphrase(account Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
+	SignTx(account Account, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error)
+	SignTxWithPassphrase(account Account, passphrase string, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error)
 }

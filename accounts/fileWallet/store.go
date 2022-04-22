@@ -1,9 +1,10 @@
 package fileWallet
 
 import (
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"heyuanlong/blockchain-step/common"
 	"io/ioutil"
 	"os"
@@ -12,16 +13,70 @@ import (
 	"time"
 )
 
-type keyStore interface {
+type StoreI interface {
 	// Loads and decrypts the key from disk.
-	GetKey(addr common.Address, filename string, auth string) (*Key, error)
+	GetKey(addr common.Address,dir string, filename string, auth string) (*Key, error)
 	// Writes and encrypts the key.
 	StoreKey(filename string, k *Key, auth string) error
 	// Joins filename with the key directory unless it is already absolute.
-	JoinPath(filename string) string
+	JoinPath(dir string, filename string) string
 }
 
-func writeTemporaryKeyFile(file string, content []byte) (string, error) {
+//-----------------------------------------------------------------------------
+
+type StoreFile struct {
+}
+func NewStoreFile()*StoreFile{
+	return &StoreFile{
+	}
+}
+
+func (ts *StoreFile) GetKey(addr common.Address,dir string, filename string, auth string) (*Key, error){
+	path := filepath.Join(dir, filename)
+	fd, err := os.Open(path)
+	if err != nil {
+		return nil,err
+	}
+	defer fd.Close()
+
+	fi,err :=fd.Stat()
+	if err != nil {
+		return nil,err
+	}
+
+	// Skip any non-key files from the folder
+	if ts.nonKeyFile(fi) {
+		log.Trace("Ignoring file on account scan", "path", path)
+		return nil,errors.New("Ignoring file")
+	}
+
+	key := new(Key)
+	if err := json.NewDecoder(fd).Decode(key); err != nil {
+		return nil,err
+	}
+	return key,nil
+}
+
+func (ts *StoreFile) StoreKey(filename string, key *Key, auth string) error {
+	content, err := json.Marshal(key)
+	if err != nil {
+		return err
+	}
+	return ts.writeKeyFile(filename, content)
+}
+
+func (ts *StoreFile) JoinPath(dir string, filename string) string {
+	if filepath.IsAbs(filename) {
+		return filename
+	}
+
+	filename = ts.keyFileName(filename)
+	return filepath.Join(dir, filename)
+}
+
+//-----------------下面都是文件存储key的辅助函数-------------------------------------------------
+
+func (ts *StoreFile) writeTemporaryKeyFile(file string, content []byte) (string, error) {
 	// Create the keystore directory with appropriate permissions
 	// in case it is not present yet.
 	const dirPerm = 0700
@@ -43,8 +98,8 @@ func writeTemporaryKeyFile(file string, content []byte) (string, error) {
 	return f.Name(), nil
 }
 
-func writeKeyFile(file string, content []byte) error {
-	name, err := writeTemporaryKeyFile(file, content)
+func (ts *StoreFile) writeKeyFile(file string, content []byte) error {
+	name, err := ts.writeTemporaryKeyFile(file, content)
 	if err != nil {
 		return err
 	}
@@ -53,12 +108,12 @@ func writeKeyFile(file string, content []byte) error {
 
 // keyFileName implements the naming convention for keyfiles:
 // UTC--<created_at UTC ISO8601>-<address hex>
-func keyFileName(keyAddr common.Address) string {
-	ts := time.Now().UTC()
-	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
+func (ts *StoreFile) keyFileName(keyAddr string) string {
+	t := time.Now().UTC()
+	return fmt.Sprintf("UTC--%s--%s", ts.toISO8601(t), keyAddr)
 }
 
-func toISO8601(t time.Time) string {
+func (ts *StoreFile) toISO8601(t time.Time) string {
 	var tz string
 	name, offset := t.Zone()
 	if name == "UTC" {
@@ -71,7 +126,7 @@ func toISO8601(t time.Time) string {
 }
 
 // nonKeyFile ignores editor backups, hidden files and folders/symlinks.
-func nonKeyFile(fi os.FileInfo) bool {
+func (ts *StoreFile) nonKeyFile(fi os.FileInfo) bool {
 	// Skip editor backups and UNIX-style hidden files.
 	if strings.HasSuffix(fi.Name(), "~") || strings.HasPrefix(fi.Name(), ".") {
 		return true
@@ -83,19 +138,3 @@ func nonKeyFile(fi os.FileInfo) bool {
 	return false
 }
 
-///---------------------------------------------------
-
-func StoreKey(filename string, key *Key) error {
-	content, err := json.Marshal(key)
-	if err != nil {
-		return err
-	}
-	return writeKeyFile(filename, content)
-}
-
-func JoinPath(dir string, filename string) string {
-	if filepath.IsAbs(filename) {
-		return filename
-	}
-	return filepath.Join(dir, filename)
-}
