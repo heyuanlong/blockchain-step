@@ -138,19 +138,19 @@ func (w *FileWallet) Contains(account accounts.Account) bool {
 	return false
 }
 
-func (w *FileWallet) SignData(account accounts.Account, mimeType string, data []byte) ([]byte, error) {
-	return []byte{}, nil
+func (w *FileWallet) SignData(account accounts.Account,  data []byte) ([]byte, error) {
+	priv,err := w.Export(account)
+	if err != nil{
+		log.Error(account.Address.String(), "Export fail",err)
+		return nil, err
+	}
+
+	return crypto.Sign(priv,data), nil
 }
-func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase, mimeType string, data []byte) ([]byte, error) {
+func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase string, data []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 
-func (w *FileWallet) SignText(account accounts.Account, text []byte) ([]byte, error) {
-	return []byte{}, nil
-}
-func (w *FileWallet) SignTextWithPassphrase(account accounts.Account, passphrase string, hash []byte) ([]byte, error) {
-	return []byte{}, nil
-}
 
 func (w *FileWallet) SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
 	return nil, nil
