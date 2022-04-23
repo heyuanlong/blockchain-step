@@ -86,7 +86,7 @@ func Ecrecover(hash, sig []byte) ([]byte, error) {
 }
 
 // SigToPub returns the public key that created the given signature.
-func SigToPub(hash, sig []byte) (*ecdsa.PublicKey, error) {
+func SigToEcdsaPub(hash, sig []byte) (*ecdsa.PublicKey, error) {
 	pub, err := sigToPub(hash, sig)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func SigToPub(hash, sig []byte) (*ecdsa.PublicKey, error) {
 	return pub.ToECDSA(), nil
 }
 
-func sigToPub(hash, sig []byte) (*secp.PublicKey, error) {
+func sigToPub(hash, sig []byte) (*PublicKey, error) {
 	if len(sig) != 65 {
 		return nil, errors.New("invalid signature")
 	}

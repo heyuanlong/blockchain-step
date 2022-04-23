@@ -1,10 +1,9 @@
 package fileWallet
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"heyuanlong/blockchain-step/accounts"
-	"heyuanlong/blockchain-step/common"
+	"heyuanlong/blockchain-step/crypto"
 )
 
 type Key struct {
@@ -22,7 +21,7 @@ type plainKeyJSON struct {
 
 func (k *Key) MarshalJSON() (j []byte, err error) {
 	jStruct := plainKeyJSON{
-		hex.EncodeToString(k.Account.Address[:]),
+		k.Account.Address.String(),
 		k.PrivateKeyAes,
 		k.URL,
 	}
@@ -37,13 +36,9 @@ func (k *Key) UnmarshalJSON(j []byte) (err error) {
 		return err
 	}
 
-	addr, err := hex.DecodeString(keyJSON.Address)
-	if err != nil {
-		return err
-	}
-	k.Account.Address = common.BytesToAddress(addr)
-
+	k.Account.Address = crypto.HexToAddress(keyJSON.Address)
 	k.PrivateKeyAes = keyJSON.PrivateKey
 	k.URL = keyJSON.URL
+
 	return nil
 }

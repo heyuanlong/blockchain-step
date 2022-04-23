@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"heyuanlong/blockchain-step/common"
+	"heyuanlong/blockchain-step/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,7 +15,7 @@ import (
 
 type StoreI interface {
 	// Loads and decrypts the key from disk.
-	GetKey(addr common.Address,dir string, filename string, auth string) (*Key, error)
+	GetKey(addr crypto.Address,dir string, filename string, auth string) (*Key, error)
 	// Writes and encrypts the key.
 	StoreKey(filename string, k *Key, auth string) error
 	// Joins filename with the key directory unless it is already absolute.
@@ -31,7 +31,7 @@ func NewStoreFile()*StoreFile{
 	}
 }
 
-func (ts *StoreFile) GetKey(addr common.Address,dir string, filename string, auth string) (*Key, error){
+func (ts *StoreFile) GetKey(addr crypto.Address,dir string, filename string, auth string) (*Key, error){
 	path := filepath.Join(dir, filename)
 	fd, err := os.Open(path)
 	if err != nil {

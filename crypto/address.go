@@ -1,11 +1,11 @@
-package common
+package crypto
 
 import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
 	"golang.org/x/crypto/sha3"
-	"math/big"
+	"heyuanlong/blockchain-step/common"
 )
 
 const (
@@ -25,22 +25,21 @@ func BytesToAddress(b []byte) Address {
 	return a
 }
 
-// BigToAddress returns Address with byte values of b.
-// If b is larger than len(h), b will be cropped from the left.
-func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
-
 // HexToAddress returns Address with byte values of s.
 // If s is larger than len(h), s will be cropped from the left.
-func HexToAddress(s string) Address { return BytesToAddress(FromHex(s)) }
+func HexToAddress(s string) Address {
+	return BytesToAddress(common.FromHex(s))
+}
 
 // IsHexAddress verifies whether a string can represent a valid hex-encoded
 // Ethereum address or not.
 func IsHexAddress(s string) bool {
-	if has0xPrefix(s) {
+	if common.Has0xPrefix(s) {
 		s = s[2:]
 	}
-	return len(s) == 2*AddressLength && isHex(s)
+	return len(s) == 2*AddressLength && common.IsHex(s)
 }
+
 
 // Bytes gets the string representation of the underlying address.
 func (a Address) Bytes() []byte { return a[:] }

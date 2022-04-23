@@ -17,7 +17,7 @@ type FileWallet struct {
 	isOpen     bool
 	dir        string
 	passPhrase string
-	AddrMap    map[common.Address]*Key
+	AddrMap    map[crypto.Address]*Key
 
 	store StoreI
 }
@@ -27,6 +27,7 @@ func NewFileWallet() *FileWallet {
 	return &FileWallet{
 		Scheme: "file",
 		store :NewStoreFile(),
+		AddrMap:make(map[crypto.Address]*Key),
 	}
 }
 
@@ -97,7 +98,7 @@ func (w *FileWallet) Import(priv *crypto.PrivateKey) error {
 	key := new(Key)
 	key.Account.Address = crypto.PubkeyToAddress2(priv.PubKey())
 	key.URL = accounts.URL{Scheme: w.Scheme, Path: w.store.JoinPath(w.dir, key.Account.Address.String())}
-	key.PrivateKeyAes = common.Bytes2Hex(common.AESEncrypt(crypto.Serialize(priv), []byte(w.passPhrase)))
+	key.PrivateKeyAes = common.Bytes2Hex(common.AESEncrypt(crypto.PrivKeySerialize(priv), []byte(w.passPhrase)))
 
 	w.AddrMap[key.Account.Address] = key
 	w.store.StoreKey(key.URL.Path,key,w.passPhrase)
@@ -174,7 +175,7 @@ func (w *FileWallet) loadAll() error {
 		return err
 	}
 	for _, fi := range files {
-		key ,err :=w.store.GetKey(common.Address{}, w.dir,fi.Name(),w.passPhrase)
+		key ,err :=w.store.GetKey(crypto.Address{}, w.dir,fi.Name(),w.passPhrase)
 		if err != nil {
 			log.Trace("GetKey file ", w.dir,fi.Name())
 			continue

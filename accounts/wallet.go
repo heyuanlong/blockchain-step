@@ -1,14 +1,13 @@
 package accounts
 
 import (
-	"heyuanlong/blockchain-step/common"
 	"heyuanlong/blockchain-step/core/types"
 	"heyuanlong/blockchain-step/crypto"
 	"math/big"
 )
 
 type Account struct {
-	Address common.Address `json:"address"` // Ethereum account address derived from the key
+	Address crypto.Address `json:"address"` // Ethereum account address derived from the key
 }
 
 // Wallet represents a software or hardware wallet that might contain one or more
