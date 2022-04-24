@@ -1,8 +1,6 @@
 package crypto
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
@@ -42,25 +40,8 @@ func SerializeUncompressed(pub *PublicKey) []byte {
 	return pub.SerializeUncompressed()
 }
 
-// SerializeCompressed serializes a public key in the 33-byte compressed format.
-func SerializeCompressed(pub *PublicKey) []byte {
-	return pub.SerializeCompressed()
-}
-
-func PubkeyEcdsaToByte(pub *ecdsa.PublicKey) []byte {
-	if pub == nil || pub.X == nil || pub.Y == nil {
-		return nil
-	}
-	return elliptic.Marshal(S256(), pub.X, pub.Y)
-}
-
-func PubkeyEcdsaToAddress(p ecdsa.PublicKey) Address {
-	pubBytes := PubkeyEcdsaToByte(&p)
-	return BytesToAddress(Keccak256(pubBytes[1:])[12:])
-}
-
-func PubkeyToAddress2(pub *PublicKey) Address {
-	p := pub.ToECDSA()
-	pubBytes := PubkeyEcdsaToByte(p)
-	return BytesToAddress(Keccak256(pubBytes[1:])[12:])
+//采用以太坊模式
+func PubkeyToAddress(pub *PublicKey) Address {
+	p := SerializeUncompressed(pub)
+	return BytesToAddress(Keccak256(p[1:])[12:])
 }

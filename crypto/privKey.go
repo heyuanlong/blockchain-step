@@ -22,11 +22,10 @@ func PrivKeyToPubKey(p *PrivateKey) *PublicKey {
 	return p.PubKey()
 }
 
+//采用以太坊模式
 func PrivKeyToAddress(p *PrivateKey) Address {
 	pub := PrivKeyToPubKey(p)
-	ecdsaPub := pub.ToECDSA()
-	pubBytes := PubkeyEcdsaToByte(ecdsaPub)
-	return BytesToAddress(Keccak256(pubBytes[1:])[12:])
+	return PubkeyToAddress(pub)
 }
 
 
