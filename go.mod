@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/sirupsen/logrus v1.8.1
 	github.com/syndtr/goleveldb v1.0.0
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
