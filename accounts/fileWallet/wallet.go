@@ -25,9 +25,9 @@ type FileWallet struct {
 func NewFileWallet() *FileWallet {
 
 	return &FileWallet{
-		Scheme: "file",
-		store :NewStoreFile(),
-		AddrMap:make(map[crypto.Address]*Key),
+		Scheme:  "file",
+		store:   NewStoreFile(),
+		AddrMap: make(map[crypto.Address]*Key),
 	}
 }
 
@@ -73,16 +73,16 @@ func (w *FileWallet) Export(account accounts.Account) (*crypto.PrivateKey, error
 	if !w.isOpen {
 		return nil, errors.New("The wallet was not opened")
 	}
-	if ! w.Contains(account){
+	if !w.Contains(account) {
 		return nil, errors.New("The wallet does not have the account")
 	}
-	v,ok:= w.AddrMap[account.Address]
-	if !ok{
+	v, ok := w.AddrMap[account.Address]
+	if !ok {
 		return nil, errors.New("The wallet does not have the account")
 	}
-	privByte ,err :=common.AESDecrypt( common.Hex2Bytes(v.PrivateKeyAes),[]byte(w.passPhrase))
-	if err != nil{
-		log.Error(account.Address.String(), "AESDecrypt fail",err)
+	privByte, err := common.AESDecrypt(common.Hex2Bytes(v.PrivateKeyAes), []byte(w.passPhrase))
+	if err != nil {
+		log.Error(account.Address.String(), "AESDecrypt fail", err)
 		return nil, err
 	}
 
@@ -96,12 +96,12 @@ func (w *FileWallet) Import(priv *crypto.PrivateKey) error {
 	}
 
 	key := new(Key)
-	key.Account.Address = crypto.PubkeyToAddress2(priv.PubKey())
+	key.Account.Address = crypto.PrivKeyToAddress(priv)
 	key.URL = accounts.URL{Scheme: w.Scheme, Path: w.store.JoinPath(w.dir, key.Account.Address.String())}
 	key.PrivateKeyAes = common.Bytes2Hex(common.AESEncrypt(crypto.PrivKeySerialize(priv), []byte(w.passPhrase)))
 
 	w.AddrMap[key.Account.Address] = key
-	w.store.StoreKey(key.URL.Path,key,w.passPhrase)
+	w.store.StoreKey(key.URL.Path, key, w.passPhrase)
 
 	return nil
 }
@@ -113,55 +113,54 @@ func (w *FileWallet) CreateAccount() accounts.Account {
 		log.Error("create account fail", err)
 	}
 	key := new(Key)
-	key.Account.Address = crypto.PubkeyToAddress2(priv.PubKey())
+	key.Account.Address = crypto.PrivKeyToAddress(priv)
 	key.URL = accounts.URL{Scheme: w.Scheme, Path: w.store.JoinPath(w.dir, key.Account.Address.String())}
 	key.PrivateKeyAes = common.Bytes2Hex(common.AESEncrypt(priv.Serialize(), []byte(w.passPhrase)))
 
 	w.AddrMap[key.Account.Address] = key
-	w.store.StoreKey(key.URL.Path,key,w.passPhrase)
+	w.store.StoreKey(key.URL.Path, key, w.passPhrase)
 
 	return key.Account
 }
 
 //-
 func (w *FileWallet) Accounts() []accounts.Account {
-	acc := make([]accounts.Account,0,len(w.AddrMap))
+	acc := make([]accounts.Account, 0, len(w.AddrMap))
 	for _, v := range w.AddrMap {
-		acc =append(acc,v.Account)
+		acc = append(acc, v.Account)
 	}
 	return acc
 }
 
 //-
 func (w *FileWallet) Contains(account accounts.Account) bool {
-	if _,ok:= w.AddrMap[account.Address];ok{
+	if _, ok := w.AddrMap[account.Address]; ok {
 		return true
 	}
 	return false
 }
 
-func (w *FileWallet) SignData(account accounts.Account,  data []byte) ([]byte, error) {
-	priv,err := w.Export(account)
-	if err != nil{
-		log.Error(account.Address.String(), "Export fail",err)
+func (w *FileWallet) SignData(account accounts.Account, data []byte) ([]byte, error) {
+	priv, err := w.Export(account)
+	if err != nil {
+		log.Error(account.Address.String(), "Export fail", err)
 		return nil, err
 	}
 
-	return crypto.Sign(priv,data), nil
+	return crypto.Sign(priv, data), nil
 }
 func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase string, data []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 
-
 func (w *FileWallet) SignTx(account accounts.Account, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error) {
 	data, _ := tx.Bytes()
-	priv,err := w.Export(account)
-	if err != nil{
-		log.Error(account.Address.String(), "Export fail",err)
+	priv, err := w.Export(account)
+	if err != nil {
+		log.Error(account.Address.String(), "Export fail", err)
 		return nil, err
 	}
-	tx.SetSign(crypto.Sign(priv,data))
+	tx.SetSign(crypto.Sign(priv, data))
 	return tx, nil
 }
 func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error) {
@@ -175,9 +174,9 @@ func (w *FileWallet) loadAll() error {
 		return err
 	}
 	for _, fi := range files {
-		key ,err :=w.store.GetKey(crypto.Address{}, w.dir,fi.Name(),w.passPhrase)
+		key, err := w.store.GetKey(crypto.Address{}, w.dir, fi.Name(), w.passPhrase)
 		if err != nil {
-			log.Trace("GetKey file ", w.dir,fi.Name())
+			log.Trace("GetKey file ", w.dir, fi.Name())
 			continue
 		}
 		w.AddrMap[key.Account.Address] = key

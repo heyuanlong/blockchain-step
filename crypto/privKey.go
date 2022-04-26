@@ -4,7 +4,6 @@ import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-
 type PrivateKey = secp.PrivateKey
 
 // S256 returns a Curve which implements secp256k1.
@@ -28,10 +27,9 @@ func PrivKeyToAddress(p *PrivateKey) Address {
 	return PubkeyToAddress(pub)
 }
 
-
 // PrivKeyFromBytes returns a private and public key for `curve' based on the
 // private key passed as an argument as a byte slice.
-func PrivKeyFromBytes(pk []byte) (*PrivateKey) {
+func PrivKeyFromBytes(pk []byte) *PrivateKey {
 	privKey := secp.PrivKeyFromBytes(pk)
 
 	return privKey

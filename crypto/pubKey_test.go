@@ -5,13 +5,12 @@ import (
 	"testing"
 )
 
-func TestPubKey1( t *testing.T)   {
-	priv,_:=NewPrivateKey()
+func TestPubKey1(t *testing.T) {
+	priv, _ := NewPrivateKey()
 
-	secpPub:=priv.PubKey()
+	secpPub := priv.PubKey()
 	pub := SerializeUncompressed(secpPub)
 	t.Log(common.Bytes2Hex(pub))
 	t.Log(BytesToAddress(Keccak256(pub[1:])[12:]))
-
 
 }

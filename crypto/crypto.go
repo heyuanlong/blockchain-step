@@ -20,5 +20,3 @@ func Keccak256(data ...[]byte) []byte {
 	d.Read(b)
 	return b
 }
-
-

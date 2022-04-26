@@ -1,19 +1,15 @@
 package cache
 
 import (
-	"path"
 	lru "github.com/hashicorp/golang-lru"
 	"heyuanlong/blockchain-step/storage/database"
+	"path"
 )
-
-
 
 // 增加一个缓存层
 type DBCache struct {
-
-	blockCache      *lru.Cache
-	blockDB database.DB
-
+	blockCache *lru.Cache
+	blockDB    database.DB
 }
 
 func New(filepath string) *DBCache {
@@ -27,10 +23,9 @@ func New(filepath string) *DBCache {
 		panic(err)
 	}
 
-
 	dbCache := &DBCache{
-		blockCache:blockCache,
-		blockDB:blockDB,
+		blockCache: blockCache,
+		blockDB:    blockDB,
 	}
 
 	return dbCache

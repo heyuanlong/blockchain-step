@@ -15,7 +15,7 @@ import (
 
 type StoreI interface {
 	// Loads and decrypts the key from disk.
-	GetKey(addr crypto.Address,dir string, filename string, auth string) (*Key, error)
+	GetKey(addr crypto.Address, dir string, filename string, auth string) (*Key, error)
 	// Writes and encrypts the key.
 	StoreKey(filename string, k *Key, auth string) error
 	// Joins filename with the key directory unless it is already absolute.
@@ -26,35 +26,35 @@ type StoreI interface {
 
 type StoreFile struct {
 }
-func NewStoreFile()*StoreFile{
-	return &StoreFile{
-	}
+
+func NewStoreFile() *StoreFile {
+	return &StoreFile{}
 }
 
-func (ts *StoreFile) GetKey(addr crypto.Address,dir string, filename string, auth string) (*Key, error){
+func (ts *StoreFile) GetKey(addr crypto.Address, dir string, filename string, auth string) (*Key, error) {
 	path := filepath.Join(dir, filename)
 	fd, err := os.Open(path)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	defer fd.Close()
 
-	fi,err :=fd.Stat()
+	fi, err := fd.Stat()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	// Skip any non-key files from the folder
 	if ts.nonKeyFile(fi) {
 		log.Trace("Ignoring file on account scan", "path", path)
-		return nil,errors.New("Ignoring file")
+		return nil, errors.New("Ignoring file")
 	}
 
 	key := new(Key)
 	if err := json.NewDecoder(fd).Decode(key); err != nil {
-		return nil,err
+		return nil, err
 	}
-	return key,nil
+	return key, nil
 }
 
 func (ts *StoreFile) StoreKey(filename string, key *Key, auth string) error {
@@ -137,4 +137,3 @@ func (ts *StoreFile) nonKeyFile(fi os.FileInfo) bool {
 	}
 	return false
 }
-

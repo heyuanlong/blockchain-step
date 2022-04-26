@@ -4,7 +4,6 @@ import (
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-
 type PublicKey = secp.PublicKey
 
 // These constants define the lengths of serialized public keys.

@@ -40,7 +40,6 @@ func IsHexAddress(s string) bool {
 	return len(s) == 2*AddressLength && common.IsHex(s)
 }
 
-
 // Bytes gets the string representation of the underlying address.
 func (a Address) Bytes() []byte { return a[:] }
 
