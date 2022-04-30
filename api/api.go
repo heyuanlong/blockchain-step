@@ -15,7 +15,6 @@ func Start() {
 	//开启prometheus监控
 	r.StartPrometheus()
 
-	r.Load(NewTx())
 	r.Load(NewAccount())
 
 	r.Run()

@@ -5,7 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"heyuanlong/blockchain-step/accounts"
 	"heyuanlong/blockchain-step/common"
-	"heyuanlong/blockchain-step/core/types"
+	"heyuanlong/blockchain-step/core/tx"
 	"heyuanlong/blockchain-step/crypto"
 	"io/ioutil"
 	"math/big"
@@ -153,7 +153,7 @@ func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase
 	return []byte{}, nil
 }
 
-func (w *FileWallet) SignTx(account accounts.Account, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error) {
+func (w *FileWallet) SignTx(account accounts.Account, tx *tx.TransactionMgt, chainID *big.Int) (*tx.TransactionMgt, error) {
 	data, _ := tx.Bytes()
 	priv, err := w.Export(account)
 	if err != nil {
@@ -163,7 +163,7 @@ func (w *FileWallet) SignTx(account accounts.Account, tx *types.TransactionMgt, 
 	tx.SetSign(crypto.Sign(priv, data))
 	return tx, nil
 }
-func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.TransactionMgt, chainID *big.Int) (*types.TransactionMgt, error) {
+func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *tx.TransactionMgt, chainID *big.Int) (*tx.TransactionMgt, error) {
 	return nil, nil
 }
 
