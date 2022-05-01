@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package protocol;
+
+option go_package = "heyuanlong/blockchain-step/protocol;protocol";
+
+
+import "protocol/transaction.proto";
+
+
+message block {
+    string parent_hash = 1;
+    string hash = 2;
+    uint64 block_num = 3;
+    string receipt_hash = 4;
+    repeated tx txs =5;
+    bytes txs_root = 6;
+    string difficulty = 7;
+    uint64 nonce = 8;
+    uint64 time_stamp = 9;
+
+}

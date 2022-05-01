@@ -11,16 +11,16 @@ import (
 	"time"
 )
 
-type TxMgt struct {
-	Tx protocol.Tx
+var DeferTxMgt TxMgt
 
+type TxMgt struct {
 	sync.RWMutex
 	poolCap      int
 	txPool map[string]*protocol.Tx
 }
 
-func (ts TxMgt) Bytes() ([]byte, error) {
-	b, err := proto.Marshal(&ts.Tx)
+func (ts *TxMgt) Bytes(tx *protocol.Tx) ([]byte, error) {
+	b, err := proto.Marshal(tx)
 	if err != nil {
 		log.Error("to bytes fail", err)
 		return []byte{}, err
@@ -28,11 +28,11 @@ func (ts TxMgt) Bytes() ([]byte, error) {
 	return b, nil
 }
 
-func (ts TxMgt) SetSign(sign []byte) {
-	ts.Tx.Sign = sign
-}
+//func (ts *TxMgt) SetSign(sign []byte) {
+//	ts.Tx.Sign = sign
+//}
 
-func (ts TxMgt) Add(tx *protocol.Tx)error {
+func (ts *TxMgt) Add(tx *protocol.Tx)error {
 
 	if tx.Sender == nil || tx.Sender.Address == "" {
 		return fmt.Errorf("交易数据from地址为空")
