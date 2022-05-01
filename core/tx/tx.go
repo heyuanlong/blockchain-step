@@ -5,7 +5,6 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"heyuanlong/blockchain-step/common"
 	"heyuanlong/blockchain-step/crypto"
 	"heyuanlong/blockchain-step/protocol"
 	"sync"
