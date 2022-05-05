@@ -32,10 +32,6 @@ func New() *Node {
 func (ts *Node) Run() {
 	go ts.chain.Run()
 
-	//接收区块
-	//连续下载落后的区块
-	//挖矿
-
 
 
 	ch := make(chan os.Signal)
@@ -44,3 +40,31 @@ func (ts *Node) Run() {
 
 	//todo 清理
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

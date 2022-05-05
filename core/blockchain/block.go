@@ -6,13 +6,17 @@ import (
 	"heyuanlong/blockchain-step/core/tx"
 	"heyuanlong/blockchain-step/protocol"
 	"google.golang.org/protobuf/proto"
+	"sync"
 )
 
 var DeferBlockMgt BlockMgt
 
 type BlockMgt struct {
-
+	sync.RWMutex
+	poolCap      int
+	blockPool map[string]*protocol.Block
 }
+
 func (ts *BlockMgt) Complete(block *protocol.Block){
 
 	//MerkleRoot

@@ -10,7 +10,7 @@ func (ts *TxMgt) AddToPool(tx *protocol.Tx) (error) {
 	hash ,_ := ts.Hash(tx)
 	txid := common.Bytes2HexWithPrefix(hash)
 
-	ts.Load()
+	ts.Lock()
 	defer ts.Unlock()
 
 	_, ok := ts.txPool[txid]
@@ -30,7 +30,7 @@ func (ts *TxMgt) DelFromPool(tx *protocol.Tx) (error) {
 	hash ,_ := ts.Hash(tx)
 	txid := common.Bytes2HexWithPrefix(hash)
 
-	ts.Load()
+	ts.Lock()
 	defer ts.Unlock()
 
 	_, ok := ts.txPool[txid]
