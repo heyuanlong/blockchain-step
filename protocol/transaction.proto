@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package protocol;
 
-option go_package = "heyuanlong/blockchain-step/protocol;protocol";
+option go_package = "heyuanlong/block-step/protocol;protocol";
 
 message address {
     string address = 1;

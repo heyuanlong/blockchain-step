@@ -1,7 +1,7 @@
 package node
 
 import (
-	"heyuanlong/blockchain-step/core/blockchain"
+	chain2 "heyuanlong/blockchain-step/core/chain"
 	"heyuanlong/blockchain-step/storage/cache"
 	"os"
 	"os/signal"
@@ -11,7 +11,7 @@ import (
 // Node
 type Node struct {
 	db *cache.DBCache
-	chain *blockchain.Chain
+	chain *chain2.Chain
 }
 
 
@@ -20,7 +20,7 @@ func New() *Node {
 	db := cache.New("./.datadir")
 
 	//chain
-	chain:=blockchain.New(db)
+	chain:= chain2.New(db)
 
 	return &Node{
 		db:db,
