@@ -96,6 +96,10 @@ func (ts *Chain) readBlockPool()  {
 		select {
 			case <- t.C:
 				//todo 查找池里有没有高度+1的区块
+				b := kblock.DeferBlockMgt.FindByNumber(ts.curBlock.BlockNum+1)
+				if b != nil {
+					ts.dealNewBlock(block)
+				}
 				
 			case block := <- ts.notifyNewBlock:
 				ts.dealNewBlock(block)
@@ -106,6 +110,7 @@ func (ts *Chain) readBlockPool()  {
 
 func (ts *Chain) dealNewBlock(block *protocol.Block)  {
 	if ts.curBlock.BlockNum != (block.BlockNum - 1){
+		//todo 待处理分叉
 		return
 	}
 
@@ -116,6 +121,9 @@ func (ts *Chain) dealNewBlock(block *protocol.Block)  {
 	//db
 	ts.db.SetLastBlock(block)
 	ts.db.AddBlock(block)
+
+	//区块池移除
+	kblock.DeferBlockMgt.DelFromPool(block)
 
 	//todo 通知挖矿reset
 }

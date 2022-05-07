@@ -55,6 +55,21 @@ func (ts *BlockMgt) IsInPool(block *protocol.Block) (bool) {
 }
 
 // 从交易池获取一定数量的交易
+func (ts *BlockMgt) FindByNumber(number uint64) *protocol.Block {
+	ts.RLock()
+	defer ts.RUnlock()
+
+	for _, v := range ts.blockPool {
+		if v.BlockNum == number{
+			return v
+		}
+	}
+
+	return nil
+}
+
+
+// 从交易池获取一定数量的交易
 func (ts *BlockMgt) Gets(num int) []*protocol.Block {
 	ts.RLock()
 	defer ts.RUnlock()
