@@ -7,7 +7,7 @@ import (
 )
 
 func (ts *BlockMgt) AddToPool(block *protocol.Block) (error) {
-	hash ,_ := ts.Hash(block)
+	hash := ts.Hash(block)
 	blockid := common.Bytes2HexWithPrefix(hash)
 
 	ts.Lock()
@@ -27,7 +27,7 @@ func (ts *BlockMgt) AddToPool(block *protocol.Block) (error) {
 }
 
 func (ts *BlockMgt) DelFromPool(block *protocol.Block) (error) {
-	hash ,_ := ts.Hash(block)
+	hash := ts.Hash(block)
 	blockid := common.Bytes2HexWithPrefix(hash)
 
 	ts.Lock()
@@ -47,7 +47,7 @@ func (ts *BlockMgt) IsInPool(block *protocol.Block) (bool) {
 	ts.RLock()
 	defer ts.RUnlock()
 
-	hash ,_ := ts.Hash(block)
+	hash  := ts.Hash(block)
 	blockid := common.Bytes2HexWithPrefix(hash)
 
 	_, ok := ts.blockPool[blockid]

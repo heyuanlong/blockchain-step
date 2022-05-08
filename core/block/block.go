@@ -23,11 +23,11 @@ func (ts *BlockMgt) Complete(block *protocol.Block){
 	block.TxsRoot = ts.MerkleRoot(block)
 
 	//block.Hash
-	hash,_ := ts.Hash(block)
+	hash := ts.Hash(block)
 	block.Hash = common.Bytes2HexWithPrefix(hash)
 }
 
-func (ts *BlockMgt) Hash(block *protocol.Block) ([]byte,error) {
+func (ts *BlockMgt) Hash(block *protocol.Block) ([]byte) {
 	t := &protocol.Block{
 		ParentHash:block.ParentHash,
 		Txs:block.Txs,
@@ -36,15 +36,13 @@ func (ts *BlockMgt) Hash(block *protocol.Block) ([]byte,error) {
 		TimeStamp:block.TimeStamp,
 		TxsRoot:block.TxsRoot,
 	}
-	b, err := proto.Marshal(t)
-	if err != nil {
-		return []byte{}, err
-	}
+	b, _ := proto.Marshal(t)
+
 	sh := sha256.New()
 	sh.Write(b)
 	hash := sh.Sum(nil)
 
-	return hash,nil
+	return hash
 }
 
 

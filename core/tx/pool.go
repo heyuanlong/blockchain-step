@@ -55,6 +55,7 @@ func (ts *TxMgt) IsInPool(tx *protocol.Tx) (bool) {
 }
 
 // 从交易池获取一定数量的交易
+// todo 应该根据一些排序获取交易
 func (ts *TxMgt) Gets(num int) []*protocol.Tx {
 	ts.RLock()
 	defer ts.RUnlock()
