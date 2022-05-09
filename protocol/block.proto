@@ -20,3 +20,8 @@ message block {
     uint64 time_stamp = 9;
 
 }
+
+
+message blockNumber {
+    uint64 block_num = 1;
+}

@@ -2,87 +2,91 @@ package block
 
 import (
 	"errors"
-	"heyuanlong/blockchain-step/common"
 	"heyuanlong/blockchain-step/protocol"
+	"sort"
+	"sync"
 )
 
-func (ts *BlockMgt) AddToPool(block *protocol.Block) (error) {
-	hash := ts.Hash(block)
-	blockid := common.Bytes2HexWithPrefix(hash)
+type blockSort []*protocol.Block
 
+func (ts blockSort) Len() int           { return len(ts) }
+func (ts blockSort) Less(i, j int) bool { return ts[i].BlockNum < ts[j].BlockNum }
+func (ts blockSort) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
+
+type blockPoolStruct struct {
+	sync.RWMutex
+	poolCap      int
+	blocks blockSort
+}
+
+func newBlockPool() *blockPoolStruct {
+	return &blockPoolStruct{
+		poolCap:1000, //todo 可能初次拉取块的时候，这里的容量不够大
+		blocks: make([]*protocol.Block, 0),
+	}
+}
+
+func (ts *blockPoolStruct) AddToPool(block *protocol.Block) error {
 	ts.Lock()
 	defer ts.Unlock()
 
-	_, ok := ts.blockPool[blockid]
-	if ok {
-		return errors.New("existing")
+	for _, v := range ts.blocks {
+		if v.Hash == block.Hash {
+			return errors.New("existing")
+		}
 	}
 
-	if len(ts.blockPool) >= ts.poolCap{
+	if len(ts.blocks) >= ts.poolCap {
 		return errors.New("pool cap is full")
 	}
 
-	ts.blockPool[blockid] = block
+	ts.blocks = append(ts.blocks,block)
+	sort.Sort(ts.blocks)
+
 	return nil
 }
 
-func (ts *BlockMgt) DelFromPool(block *protocol.Block) (error) {
-	hash := ts.Hash(block)
-	blockid := common.Bytes2HexWithPrefix(hash)
-
+func (ts *blockPoolStruct) DelFromPool(block *protocol.Block) error {
 	ts.Lock()
 	defer ts.Unlock()
 
-	_, ok := ts.blockPool[blockid]
-	if !ok {
-		return errors.New("not find")
-	}
-
-	delete(ts.blockPool, blockid)
-
-	return nil
-}
-
-func (ts *BlockMgt) IsInPool(block *protocol.Block) (bool) {
-	ts.RLock()
-	defer ts.RUnlock()
-
-	hash  := ts.Hash(block)
-	blockid := common.Bytes2HexWithPrefix(hash)
-
-	_, ok := ts.blockPool[blockid]
-	return ok
-}
-
-// 从交易池获取一定数量的交易
-func (ts *BlockMgt) FindByNumber(number uint64) *protocol.Block {
-	ts.RLock()
-	defer ts.RUnlock()
-
-	for _, v := range ts.blockPool {
-		if v.BlockNum == number{
-			return v
-		}
-	}
-
-	return nil
-}
-
-
-// 从交易池获取一定数量的交易
-func (ts *BlockMgt) Gets(num int) []*protocol.Block {
-	ts.RLock()
-	defer ts.RUnlock()
-
-	blocks := make([]*protocol.Block, 0)
-	i := 0
-	for _, v := range ts.blockPool {
-		blocks = append(blocks, v)
-		i++
-		if i>= num{
+	index := -1
+	for i, v := range ts.blocks {
+		if v.Hash == block.Hash {
+			index = i
 			break
 		}
 	}
+	if index == -1 {
+		return errors.New("not find")
+	}
 
-	return blocks
+	ts.blocks = append(ts.blocks[:index], ts.blocks[index+1:]...)
+	return nil
+}
+
+
+func (ts *blockPoolStruct) IsInPool(block *protocol.Block) bool {
+	ts.RLock()
+	defer ts.RUnlock()
+
+	for _, v := range ts.blocks {
+		if v.Hash == block.Hash {
+			return true
+		}
+	}
+
+	return false
+}
+
+//
+func (ts *blockPoolStruct) GetFisrt() *protocol.Block {
+	ts.RLock()
+	defer ts.RUnlock()
+
+	if len(ts.blocks) > 0{
+		return ts.blocks[0]
+	}
+
+	return nil
 }

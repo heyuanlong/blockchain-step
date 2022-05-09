@@ -18,27 +18,53 @@ type Chain struct {
 	db       *cache.DBCache
 	p2p      p2p.P2pI
 
-	notifyNewBlock chan *protocol.Block
-	notifyDig      chan struct{}
+	notifyHaveBlockToPool chan *protocol.Block //通知 goroutine 有新块到了区块池
+	notifyDig      chan struct{}			   //通知 goroutine 重置挖矿数据
+
+	peerBlockHeight uint64				//对等网络的标记高度
+	peerHeightMap map[string]uint64		//对等网络的高度
+
 }
 
 func New(db *cache.DBCache, p2p p2p.P2pI) *Chain {
 	return &Chain{
 		db:             db,
 		p2p:            p2p,
-		notifyNewBlock: make(chan *protocol.Block, 50),
+		notifyHaveBlockToPool: make(chan *protocol.Block, 50),
 		notifyDig:      make(chan struct{}, 500),
+
+		peerHeightMap:make(map[string]uint64),
 	}
 }
 
-func (ts *Chain) load() {
-	//从数据库加载Chain，如果没有数据，则初始化默认 Chain
+func (ts *Chain) Run() {
+	//加载Chain数据
+	ts.loadChain()
+
+	//注册p2p数据回调函数
+	ts.p2p.RegisterOnReceive(types.MSG_TYPE_BLOCK, ts.msgOnRecv)
+	ts.p2p.RegisterOnReceive(types.MSG_TYPE_RESP_LASTBLOCK, ts.msgOnRecv)
+
+	//广播请求获取对等节点的块
+	go ts.getLastBlock()
+
+	//从区块池取区块
+	go ts.readBlockPool()
+
+	//挖矿
+	ts.digRun()
+}
+
+
+func (ts *Chain) loadChain() {
+	//从数据库加载Chain数据
 	block, _ := ts.db.GetLastBlock()
 	if block != nil {
 		ts.curBlock = block
 		return
 	}
 
+	//没有Chain数据
 	//初始化创世块
 	zeroBlock := &protocol.Block{
 		ParentHash: "0x00000000",
@@ -50,71 +76,84 @@ func (ts *Chain) load() {
 	}
 	kblock.DeferBlockMgt.Complete(zeroBlock)
 
-	ts.curBlock = zeroBlock
 
-	//db
-	ts.db.SetLastBlock(zeroBlock)
-	ts.db.AddBlock(zeroBlock)
+	ts.curBlock = zeroBlock
+	ts.commit(zeroBlock)
 
 }
 
+//广播请求获取对等节点的最新块
 func (ts *Chain) getLastBlock() {
 	msg := p2p.BroadcastMsg{
-		MsgType: types.MSG_TYPE_GETLASTBLOCK,
+		MsgType: types.MSG_TYPE_REQ_LASTBLOCK,
 		Msg:     []byte{},
 	}
 
-	ts.p2p.Broadcast(&msg)
+	t := time.NewTicker(time.Second * 1)
+
+	for {
+		ts.p2p.Broadcast(&msg)
+
+		//发现落后于对等节点，请求block
+		//todo 极有可能多次重复广播请求同样的区块号的区块
+		if ts.curBlock.BlockNum  <  (ts.peerBlockHeight) {
+			peers , _ := ts.p2p.Peers()
+			peersLen := len(peers)
+			if peersLen == 0 {
+				log.Error("peers len == 0")
+				return
+			}
+
+			peerIndex := 0
+			for i := ts.curBlock.BlockNum + 1; i < ts.peerBlockHeight; i++ {
+
+				//广播请求指定区块
+				ts.broadcastReqBlock(i,peers[peerIndex])
+
+				peerIndex++
+				if peerIndex == peersLen{
+					peerIndex = 0
+				}
+			}
+		}
+
+		<-t.C
+	}
 }
 
-func (ts *Chain) Run() {
-	ts.load()
-	ts.p2p.RegisterOnReceive("block", ts.msgOnRecv)
-	ts.getLastBlock()
-
-	//接收区块
-	//接收的区块放入区块池
-	//chain从区块池获取区块
-	//挖矿
-
-	go ts.readBlockPool()
-	ts.digRun()
-}
-
-//chain从区块池获取区块
+//从区块池获取区块
 func (ts *Chain) readBlockPool() {
-	t := time.NewTicker(time.Second)
+	t := time.NewTicker(time.Second * 1)
 
 	for {
 		select {
 		case <-t.C:
-			//查找池里有没有高度+1的区块
-			//todo 取区块需要修改，这里没有处理分叉的可能
-			b := kblock.DeferBlockMgt.FindByNumber(ts.curBlock.BlockNum + 1)
-			if b != nil {
-				ts.dealNewBlock(b)
-			}
+			ts.dealNewBlock()
 
-		case block := <-ts.notifyNewBlock:
-			ts.dealNewBlock(block)
+		case  <-ts.notifyHaveBlockToPool:
+			ts.dealNewBlock()
 
 		}
 	}
 }
 
-func (ts *Chain) dealNewBlock(block *protocol.Block) {
-	if ts.curBlock.BlockNum != (block.BlockNum - 1) {
-		//todo 待处理分叉
+func (ts *Chain) dealNewBlock() {
+
+	block := kblock.DeferBlockMgt.GetFisrt()
+	if block == nil {
+		return
+	}
+
+	//todo 待处理分叉
+
+	if ts.curBlock.BlockNum >=  (block.BlockNum) {
 		return
 	}
 
 	kblock.DeferBlockMgt.Complete(block)
 
 	ts.curBlock = block
-
-	//db
-	ts.db.SetLastBlock(block)
-	ts.db.AddBlock(block)
+	ts.commit(block)
 
 	//区块池移除
 	kblock.DeferBlockMgt.DelFromPool(block)
@@ -123,7 +162,14 @@ func (ts *Chain) dealNewBlock(block *protocol.Block) {
 	ts.notifyDig <- struct{}{}
 }
 
-//挖矿
+func (ts *Chain) commit(block *protocol.Block) {
+	//db
+	ts.db.SetLastBlock(block)
+	ts.db.AddBlock(block)
+}
+
+
+//挖矿----------------------------------------------------------------------------
 func (ts *Chain) digRun() {
 	digBlock := ts.buildDigBlock()
 	for {
@@ -132,8 +178,8 @@ func (ts *Chain) digRun() {
 			digBlock = ts.buildDigBlock()
 		default:
 			if ts.dig(digBlock) {
-				//广播
-				ts.broadcast(digBlock)
+				//广播挖到的区块
+				ts.broadcastDigBlock(digBlock)
 
 				//放入区块池
 				ts.addToPool(digBlock)
@@ -183,9 +229,13 @@ func (ts *Chain) msgOnRecv(msgType string, msgBytes []byte, p *p2p.Peer) {
 	switch msgType {
 	case types.MSG_TYPE_BLOCK:
 		ts.msgDealBlock(msgBytes, p)
+	case types.MSG_TYPE_RESP_LASTBLOCK:
+		ts.msgDealRespLastBlock(msgBytes, p)
 	}
 }
 
+
+//block
 func (ts *Chain) msgDealBlock(msgBytes []byte, p *p2p.Peer) {
 	//接收的区块放入区块池
 
@@ -195,6 +245,7 @@ func (ts *Chain) msgDealBlock(msgBytes []byte, p *p2p.Peer) {
 		log.Error(err)
 	}
 
+	//todo 要多个分叉里判断
 	//如果区块太旧，就丢弃
 	if ts.curBlock.BlockNum > (block.BlockNum + 100){
 		return
@@ -202,6 +253,23 @@ func (ts *Chain) msgDealBlock(msgBytes []byte, p *p2p.Peer) {
 
 	ts.addToPool(block)
 }
+
+//respLastBlock
+func (ts *Chain) msgDealRespLastBlock(msgBytes []byte, p *p2p.Peer) {
+
+	block := &protocol.Block{}
+	err := proto.Unmarshal(msgBytes, block)
+	if err != nil {
+		log.Error(err)
+	}
+
+	ts.peerHeightMap[p.ID] = block.BlockNum
+
+	//todo 计算标记高度
+
+	ts.peerBlockHeight = block.BlockNum
+}
+
 //--------------------------------------------------------------------------------
 
 //发送到区块池，并通知chain去取
@@ -212,11 +280,11 @@ func (ts *Chain) addToPool(block *protocol.Block) {
 	}
 
 	//todo 可能会卡住
-	ts.notifyNewBlock <- block
+	ts.notifyHaveBlockToPool <- block
 }
 
-//
-func (ts *Chain) broadcast(block *protocol.Block) {
+//广播挖到的区块
+func (ts *Chain) broadcastDigBlock(block *protocol.Block) {
 
 	msg, err := proto.Marshal(block)
 	if err != nil {
@@ -229,4 +297,23 @@ func (ts *Chain) broadcast(block *protocol.Block) {
 	}
 
 	ts.p2p.Broadcast(m)
+}
+
+//广播请求指定区块
+func (ts *Chain) broadcastReqBlock(number uint64,p *p2p.Peer) {
+
+	obj := &protocol.BlockNumber{
+		BlockNum:   number,
+	}
+	msg, err := proto.Marshal(obj)
+	if err != nil {
+		log.Error(err)
+	}
+
+	m := &p2p.BroadcastMsg{
+		types.MSG_TYPE_REQ_BLOCKBYNUMBER,
+		msg,
+	}
+
+	ts.p2p.BroadcastToPeer(m,p)
 }

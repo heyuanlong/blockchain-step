@@ -9,12 +9,17 @@ import (
 	"sync"
 )
 
+
 var DeferBlockMgt BlockMgt
+func init() {
+	DeferBlockMgt.blockPool = newBlockPool()
+}
+
+
 
 type BlockMgt struct {
 	sync.RWMutex
-	poolCap      int
-	blockPool map[string]*protocol.Block
+	blockPool *blockPoolStruct
 }
 
 func (ts *BlockMgt) Complete(block *protocol.Block){
@@ -54,3 +59,22 @@ func (ts *BlockMgt) MerkleRoot(block *protocol.Block) []byte {
 	}
 	return common.Merkel(txHashs)
 }
+
+//-----------------------------------------------------------------
+
+func (ts *BlockMgt) AddToPool(block *protocol.Block) error {
+	return ts.blockPool.AddToPool(block)
+}
+
+func (ts *BlockMgt) DelFromPool(block *protocol.Block) error {
+	return ts.blockPool.DelFromPool(block)
+}
+func (ts *BlockMgt) IsInPool(block *protocol.Block) bool {
+	return ts.blockPool.IsInPool(block)
+}
+func (ts *BlockMgt) GetFisrt() *protocol.Block {
+	return ts.blockPool.GetFisrt()
+}
+
+
+//-----------------------------------------------------------------
