@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"fmt"
 	lru "github.com/hashicorp/golang-lru"
 	"heyuanlong/blockchain-step/protocol"
 	"heyuanlong/blockchain-step/storage/database"
@@ -43,6 +44,7 @@ func New(filepath string) *DBCache {
 	return dbCache
 }
 
+//-----------------------------------------------------------------
 func (ts *DBCache) GetLastBlock() (*protocol.Block,error) {
 	v ,err := ts.blockDB.Get([]byte("last_block"))
 	if err != nil {
@@ -64,10 +66,53 @@ func (ts *DBCache) SetLastBlock(block *protocol.Block) (error) {
 
 func (ts *DBCache) AddBlock(block *protocol.Block) (error) {
 	ts.blockCache.Add(block.Hash,block)
-	ts.blockNumberCache.Add(block.BlockNum,block)
+	ts.blockNumberCache.Add(block.BlockNum,[]byte(block.Hash))
 
 	v, _ := proto.Marshal(block)
-	return ts.blockDB.Set([]byte(block.Hash),v)
+	if err :=  ts.blockDB.Set([]byte(block.Hash),v); err != nil {
+		return err
+	}
+	if err :=  ts.blockDB.Set([]byte(fmt.Sprintf("%d",block.BlockNum)),[]byte(block.Hash)); err != nil {
+		return err
+	}
+
+
+	return nil
 }
 
+func (ts *DBCache) GetBlockByHash(hash []byte) (*protocol.Block,error) {
+	v,ok := ts.blockCache.Get(hash)
+	if !ok {
+		value ,err := ts.blockDB.Get(hash)
+		if err != nil {
+			return nil, err
+		}
+		if len(value) == 0 {
+			return nil, errors.New("GetBlockByHash:链数据有问题?")
+		}
+		v = value
+	}
+
+
+	var block protocol.Block
+	err := proto.Unmarshal(v.([]byte), &block)
+	return &block, err
+}
+
+
+func (ts *DBCache) GetBlockByNumber(number uint64) (*protocol.Block,error) {
+	hash , ok :=ts.blockNumberCache.Get(number)
+	if !ok {
+		value ,err := ts.blockDB.Get([]byte(fmt.Sprintf("%d",number)))
+		if err != nil {
+			return nil, err
+		}
+		if len(value) == 0 {
+			return nil, nil
+		}
+		hash = value
+	}
+
+	return ts.GetBlockByHash(hash.([]byte))
+}
 

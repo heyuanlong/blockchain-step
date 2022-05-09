@@ -17,6 +17,7 @@ type Chain struct {
 	curBlock *protocol.Block //当前记录的高度
 	db       *cache.DBCache
 	p2p      p2p.P2pI
+	blockMgt *kblock.BlockMgt
 
 	notifyHaveBlockToPool chan *protocol.Block //通知 goroutine 有新块到了区块池
 	notifyDig      chan struct{}			   //通知 goroutine 重置挖矿数据
@@ -26,10 +27,12 @@ type Chain struct {
 
 }
 
-func New(db *cache.DBCache, p2p p2p.P2pI) *Chain {
+func New(db *cache.DBCache, p2p p2p.P2pI,blockMgt *kblock.BlockMgt) *Chain {
 	return &Chain{
 		db:             db,
 		p2p:            p2p,
+		blockMgt:            blockMgt,
+
 		notifyHaveBlockToPool: make(chan *protocol.Block, 50),
 		notifyDig:      make(chan struct{}, 500),
 
@@ -74,7 +77,7 @@ func (ts *Chain) loadChain() {
 		Nonce:      block.Nonce,
 		TimeStamp:  block.TimeStamp,
 	}
-	kblock.DeferBlockMgt.Complete(zeroBlock)
+	ts.blockMgt.Complete(zeroBlock)
 
 
 	ts.curBlock = zeroBlock
@@ -139,7 +142,7 @@ func (ts *Chain) readBlockPool() {
 
 func (ts *Chain) dealNewBlock() {
 
-	block := kblock.DeferBlockMgt.GetFisrt()
+	block := ts.blockMgt.GetFisrt()
 	if block == nil {
 		return
 	}
@@ -150,13 +153,13 @@ func (ts *Chain) dealNewBlock() {
 		return
 	}
 
-	kblock.DeferBlockMgt.Complete(block)
+	ts.blockMgt.Complete(block)
 
 	ts.curBlock = block
 	ts.commit(block)
 
 	//区块池移除
-	kblock.DeferBlockMgt.DelFromPool(block)
+	ts.blockMgt.DelFromPool(block)
 
 	//通知挖矿reset
 	ts.notifyDig <- struct{}{}
@@ -202,7 +205,7 @@ func (ts *Chain) buildDigBlock() *protocol.Block {
 	//加载交易
 	block.Txs = tx.DeferTxMgt.Gets(200)
 
-	kblock.DeferBlockMgt.Complete(block)
+	ts.blockMgt.Complete(block)
 	return block
 }
 
@@ -213,8 +216,8 @@ func (ts *Chain) dig(block *protocol.Block) bool {
 	n := uint64(t.UnixNano())
 	for i := 0; i < 1000; i++ {
 		block.Nonce = n + uint64(i)
-		hash := kblock.DeferBlockMgt.Hash(block)
-		if string(hash[0:2]) == block.Difficulty {
+		hash := ts.blockMgt.Hash(block)
+		if string(hash[0:len(block.Difficulty)]) == block.Difficulty {
 			block.Hash = common.Bytes2HexWithPrefix(hash)
 			return true
 		}
@@ -274,7 +277,7 @@ func (ts *Chain) msgDealRespLastBlock(msgBytes []byte, p *p2p.Peer) {
 
 //发送到区块池，并通知chain去取
 func (ts *Chain) addToPool(block *protocol.Block) {
-	err := kblock.DeferBlockMgt.AddToPool(block)
+	err := ts.blockMgt.AddToPool(block)
 	if err != nil {
 		log.Error(err)
 	}
@@ -289,6 +292,7 @@ func (ts *Chain) broadcastDigBlock(block *protocol.Block) {
 	msg, err := proto.Marshal(block)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 
 	m := &p2p.BroadcastMsg{
