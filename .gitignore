@@ -15,3 +15,4 @@
 # vendor/
 
 accounts/fileWallet/walletdir/
+cmd/step/datadir

@@ -74,8 +74,8 @@ func (ts *Chain) loadChain() {
 		BlockNum:   0,
 		Txs:        []*protocol.Tx{},
 		Difficulty: "0001",
-		Nonce:      block.Nonce,
-		TimeStamp:  block.TimeStamp,
+		Nonce:      0,
+		TimeStamp:  uint64(time.Now().Unix()),
 	}
 	ts.blockMgt.Complete(zeroBlock)
 
@@ -146,10 +146,14 @@ func (ts *Chain) dealNewBlock() {
 	if block == nil {
 		return
 	}
+	log.Info("dealNewBlock:",block.BlockNum)
 
 	//todo 待处理分叉
 
 	if ts.curBlock.BlockNum >=  (block.BlockNum) {
+		log.Info("ts.curBlock.BlockNum >=  (block.BlockNum):",ts.curBlock.BlockNum , (block.BlockNum))
+		//区块池移除
+		ts.blockMgt.DelFromPool(block)
 		return
 	}
 
@@ -197,7 +201,7 @@ func (ts *Chain) buildDigBlock() *protocol.Block {
 	block := &protocol.Block{
 		ParentHash: ts.curBlock.Hash,
 		BlockNum:   ts.curBlock.BlockNum + 1,
-		Difficulty: "00",
+		Difficulty: "00000",
 		Nonce:      0,
 		TimeStamp:  0,
 	}
@@ -217,7 +221,9 @@ func (ts *Chain) dig(block *protocol.Block) bool {
 	for i := 0; i < 1000; i++ {
 		block.Nonce = n + uint64(i)
 		hash := ts.blockMgt.Hash(block)
-		if string(hash[0:len(block.Difficulty)]) == block.Difficulty {
+		hashHex := common.Bytes2Hex(hash)
+
+		if hashHex[0:len(block.Difficulty)] == block.Difficulty {
 			block.Hash = common.Bytes2HexWithPrefix(hash)
 			return true
 		}
@@ -279,7 +285,7 @@ func (ts *Chain) msgDealRespLastBlock(msgBytes []byte, p *p2p.Peer) {
 func (ts *Chain) addToPool(block *protocol.Block) {
 	err := ts.blockMgt.AddToPool(block)
 	if err != nil {
-		log.Error(err)
+		log.Error(err,block.BlockNum)
 	}
 
 	//todo 可能会卡住

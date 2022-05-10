@@ -1,9 +1,10 @@
-package step
+package main
 
 import (
 	"fmt"
 	"github.com/urfave/cli/v2"
 	"heyuanlong/blockchain-step/node"
+	_ "heyuanlong/blockchain-step/log"
 	"os"
 	"sort"
 )
