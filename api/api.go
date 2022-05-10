@@ -40,7 +40,7 @@ func ReturnError(c *gin.Context, status int, errors error) []byte {
 		Data:    nil,
 	}
 	jsonStr, _ := json.Marshal(v)
-	c.Data(http.StatusOK, "text/plain", jsonStr)
+	c.Data(http.StatusOK, "application/json; charset=utf-8", jsonStr)
 	return jsonStr
 }
 
@@ -51,6 +51,6 @@ func ReturnData(c *gin.Context, status int, data interface{}) []byte {
 		Data:    data,
 	}
 	jsonStr, _ := json.Marshal(v)
-	c.Data(http.StatusOK, "text/plain", jsonStr)
+	c.Data(http.StatusOK, "application/json; charset=utf-8", jsonStr)
 	return jsonStr
 }

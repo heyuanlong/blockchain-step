@@ -3,6 +3,7 @@ package node
 import (
 	kblock "heyuanlong/blockchain-step/core/block"
 	chain2 "heyuanlong/blockchain-step/core/chain"
+	"heyuanlong/blockchain-step/core/config"
 	"heyuanlong/blockchain-step/p2p/http"
 	"heyuanlong/blockchain-step/storage/cache"
 	"os"
@@ -19,11 +20,12 @@ type Node struct {
 }
 
 
-func New() *Node {
+func New(confFile string) *Node {
+	config.InitConfParamByFile(confFile)
 	// 创建缓存数据库
-	db := cache.New("./.datadir")
+	db := cache.New(config.Config.DataDir)
 	// p2p
-	p:=http.New([]string{},":3001","3001")
+	p:=http.New(config.Config.Node.NodeAddrs,config.Config.Node.Local,config.Config.Node.NodeId)
 	//blockMgt
 	blockMgt := kblock.NewBlockMgt(db,p)
 	//chain
