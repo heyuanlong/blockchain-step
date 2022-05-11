@@ -1,6 +1,8 @@
 package common
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -22,4 +24,20 @@ func GetCurrentPath() (string, error) {
 		return "", err
 	}
 	return strings.Replace(dir, "\\", "/", -1), nil
+}
+
+
+func BuildUrlParam(sUrl string, params map[string]interface{}) string {
+	var buf strings.Builder
+	buf.WriteString(sUrl)
+	buf.WriteByte('?')
+
+	for k, v := range params {
+		buf.WriteString(url.QueryEscape(k))
+		buf.WriteByte('=')
+		buf.WriteString(url.QueryEscape(fmt.Sprint(v)))
+		buf.WriteByte('&')
+	}
+
+	return buf.String()
 }

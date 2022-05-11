@@ -11,6 +11,7 @@ var Config = &jsonConfig{}
 type jsonConfig struct {
 	Node nodeConfig `json:"node"`
 	DataDir string `json:"data_dir"`
+	ApiPort int64 `json:"api_port"`
 }
 
 type nodeConfig struct {

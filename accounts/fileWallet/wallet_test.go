@@ -16,14 +16,14 @@ func TestWallet(t *testing.T) {
 	if err := w.Import(p); err != nil {
 		t.Fatal(err)
 	}
-	t.Log("Import:", crypto.PubkeyToAddress2(p.PubKey()))
+	t.Log("Import:", crypto.PrivKeyToAddress(p))
 	pe, err := w.Export(accounts.Account{Address: crypto.PrivKeyToAddress(p)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("Export:", crypto.PubkeyToAddress2(pe.PubKey()))
+	t.Log("Export:",  crypto.PrivKeyToAddress(pe))
 
-	acc := w.CreateAccount()
+	acc,_ := w.CreateAccount()
 	t.Log("CreateAccount:", acc.Address)
 
 	accs := w.Accounts()

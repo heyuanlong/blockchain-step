@@ -1,8 +1,8 @@
 package accounts
 
 import (
-	"heyuanlong/blockchain-step/core/tx"
 	"heyuanlong/blockchain-step/crypto"
+	"heyuanlong/blockchain-step/protocol"
 	"math/big"
 )
 
@@ -40,6 +40,6 @@ type Wallet interface {
 	SignText(account Account, text []byte) ([]byte, error)
 	SignTextWithPassphrase(account Account, passphrase string, hash []byte) ([]byte, error)
 
-	SignTx(account Account, tx *tx.TransactionMgt, chainID *big.Int) (*tx.TransactionMgt, error)
-	SignTxWithPassphrase(account Account, passphrase string, tx *tx.TransactionMgt, chainID *big.Int) (*tx.TransactionMgt, error)
+	SignTx(account Account, tx *protocol.Tx, chainID *big.Int) (*protocol.Tx, error)
+	SignTxWithPassphrase(account Account, passphrase string, tx *protocol.Tx, chainID *big.Int) (*protocol.Tx, error)
 }

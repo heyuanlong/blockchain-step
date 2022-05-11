@@ -71,3 +71,8 @@ func HttpDo(queryUrl, method string, params, headers map[string]string, data []b
 	}
 	return
 }
+
+
+func HttpGet(queryUrl string, params map[string]string, timeout int64) (body []byte, err error) {
+	return HttpDo(queryUrl, "GET", params, map[string]string{}, []byte{}, timeout, map[string]interface{}{})
+}

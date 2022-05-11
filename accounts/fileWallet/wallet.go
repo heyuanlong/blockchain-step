@@ -7,9 +7,21 @@ import (
 	"heyuanlong/blockchain-step/common"
 	"heyuanlong/blockchain-step/core/tx"
 	"heyuanlong/blockchain-step/crypto"
+	"heyuanlong/blockchain-step/protocol"
 	"io/ioutil"
 	"math/big"
+	"sync"
 )
+
+var deferFileWallet *FileWallet
+var once sync.Once
+func GetFileWallet()*FileWallet{
+	once.Do(func() {
+		deferFileWallet = NewFileWallet()
+	})
+
+	return deferFileWallet
+}
 
 type FileWallet struct {
 	Scheme string
@@ -82,7 +94,7 @@ func (w *FileWallet) Export(account accounts.Account) (*crypto.PrivateKey, error
 	}
 	privByte, err := common.AESDecrypt(common.Hex2Bytes(v.PrivateKeyAes), []byte(w.passPhrase))
 	if err != nil {
-		log.Error(account.Address.String(), "AESDecrypt fail", err)
+		log.Error(account.Address.String(), "AESDecrypt fail,may password error", err)
 		return nil, err
 	}
 
@@ -107,10 +119,15 @@ func (w *FileWallet) Import(priv *crypto.PrivateKey) error {
 }
 
 //-创建账户
-func (w *FileWallet) CreateAccount() accounts.Account {
+func (w *FileWallet) CreateAccount() (accounts.Account ,error ){
+	if !w.isOpen {
+		return accounts.Account{}, errors.New("The wallet was not opened")
+	}
+
 	priv, err := crypto.NewPrivateKey()
 	if err != nil {
 		log.Error("create account fail", err)
+		return accounts.Account{},err
 	}
 	key := new(Key)
 	key.Account.Address = crypto.PrivKeyToAddress(priv)
@@ -120,7 +137,7 @@ func (w *FileWallet) CreateAccount() accounts.Account {
 	w.AddrMap[key.Account.Address] = key
 	w.store.StoreKey(key.URL.Path, key, w.passPhrase)
 
-	return key.Account
+	return key.Account ,nil
 }
 
 //-
@@ -153,22 +170,27 @@ func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase
 	return []byte{}, nil
 }
 
-func (w *FileWallet) SignTx(account accounts.Account, tx *tx.TransactionMgt, chainID *big.Int) (*tx.TransactionMgt, error) {
-	data, _ := tx.Bytes()
+func (w *FileWallet) SignTx(account accounts.Account, txObj *protocol.Tx, chainID *big.Int) (*protocol.Tx, error) {
+	hash, _ := tx.DeferTxMgt.Hash(txObj)
 	priv, err := w.Export(account)
 	if err != nil {
-		log.Error(account.Address.String(), "Export fail", err)
+		log.Error(account.Address.String(), "Export fail,maybe not in wallet:", err)
 		return nil, err
 	}
-	tx.SetSign(crypto.Sign(priv, data))
-	return tx, nil
+	txObj.Sign = crypto.Sign(priv, hash)
+	return txObj, nil
 }
-func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *tx.TransactionMgt, chainID *big.Int) (*tx.TransactionMgt, error) {
+func (w *FileWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, txObj *protocol.Tx, chainID *big.Int) (*protocol.Tx, error) {
 	return nil, nil
+
 }
 
 //-----------------------------------------------------------------
 func (w *FileWallet) loadAll() error {
+	if !w.isOpen {
+		return errors.New("The wallet was not opened")
+	}
+
 	files, err := ioutil.ReadDir(w.dir)
 	if err != nil {
 		return err

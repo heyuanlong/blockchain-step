@@ -45,8 +45,7 @@ func (ts *BlockMgt) Complete(block *protocol.Block){
 	block.TxsRoot = ts.MerkleRoot(block)
 
 	//block.Hash
-	hash := ts.Hash(block)
-	block.Hash = common.Bytes2HexWithPrefix(hash)
+	block.Hash = common.Bytes2HexWithPrefix(ts.Hash(block))
 }
 
 func (ts *BlockMgt) Hash(block *protocol.Block) ([]byte) {

@@ -13,6 +13,11 @@ import (
 
 var DeferTxMgt TxMgt
 
+func init() {
+	DeferTxMgt.poolCap = 1000
+	DeferTxMgt.txPool = make( map[string]*protocol.Tx)
+}
+
 type TxMgt struct {
 	sync.RWMutex
 	poolCap      int
@@ -28,10 +33,6 @@ func (ts *TxMgt) Bytes(tx *protocol.Tx) ([]byte, error) {
 	return b, nil
 }
 
-//func (ts *TxMgt) SetSign(sign []byte) {
-//	ts.Tx.Sign = sign
-//}
-
 func (ts *TxMgt) Add(tx *protocol.Tx)error {
 
 	if tx.Sender == nil || tx.Sender.Address == "" {
@@ -44,36 +45,28 @@ func (ts *TxMgt) Add(tx *protocol.Tx)error {
 	if len(tx.Sign) == 0 {
 		return fmt.Errorf("交易数据未签名")
 	}
-	if len(tx.PublicKey) == 0 {
-		return fmt.Errorf("交易数据公钥为空")
-	}
-
-	//
-	pub ,err  := crypto.ParsePubKey( tx.PublicKey)
-	if err != nil{
-		return err
-	}
-	accountAddr := crypto.PubkeyToAddress(pub)
-	if tx.Sender.Address != accountAddr.Hex() {
-		return fmt.Errorf("公钥地址和sender不匹配 p: %s, sender: %s",  accountAddr.Hex(), tx.Sender.Address)
-	}
 
 	//todo Sender 是否在钱包里
 	//todo 检验 nonce
 
-	//检验 签名
-	b,err:=ts.VerifySignedTx(tx)
+	//检验签名
+	accountAddr,err:=ts.Sender(tx)
 	if err != nil{
 		return err
 	}
-	if !b{
-		return fmt.Errorf("验签不通过")
+
+	//以太坊的发送者地址是直接从Sender方法里返回的
+	//而这里在交易里有发送者地址，所以必须得判断下
+	if tx.Sender.Address != accountAddr.Hex() {
+		return fmt.Errorf("公钥地址和sender不匹配 p: %s, sender: %s",  accountAddr.Hex(), tx.Sender.Address)
 	}
 
-
-	//todo
 	//加入交易池
-	ts.AddToPool(tx)
+	if err := ts.AddToPool(tx);err != nil{
+		return err
+	}
+
+	//todo 广播
 
 	return nil
 }
@@ -97,12 +90,18 @@ func (ts *TxMgt) Hash(tx *protocol.Tx) ([]byte,error) {
 	return hash,nil
 }
 
-func (ts *TxMgt) VerifySignedTx(tx *protocol.Tx) (bool, error) {
+//检验并获取sender
+func (ts *TxMgt) Sender(tx *protocol.Tx) (crypto.Address, error) {
 	hash ,err := ts.Hash(tx)
 	if err != nil {
-		return false, err
+		return crypto.Address{}, err
 	}
 
-	ret :=crypto.VerifySignature(tx.PublicKey,hash,tx.Sign)
-	return ret,nil
+	pub,err  :=crypto.Ecrecover(hash,tx.Sign)
+	if err != nil{
+		return crypto.Address{}, err
+	}
+
+	return  crypto.BytesToAddress(crypto.Keccak256(pub[1:])[12:]),nil
 }
+

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"heyuanlong/blockchain-step/api"
 	kblock "heyuanlong/blockchain-step/core/block"
 	chain2 "heyuanlong/blockchain-step/core/chain"
 	"heyuanlong/blockchain-step/core/config"
@@ -16,6 +17,8 @@ type Node struct {
 	db *cache.DBCache
 
 	blockMgt *kblock.BlockMgt
+	api *api.ApiStruct
+
 	chain *chain2.Chain
 }
 
@@ -28,18 +31,23 @@ func New(confFile string) *Node {
 	p:=http.New(config.Config.Node.NodeAddrs,config.Config.Node.Local,config.Config.Node.NodeId)
 	//blockMgt
 	blockMgt := kblock.NewBlockMgt(db,p)
+
+
+	apix:=api.NewApi(int (config.Config.ApiPort),db)
 	//chain
 	chain:= chain2.New(db,p,blockMgt)
 
 	return &Node{
 		db:db,
 		blockMgt:blockMgt,
+		api:apix,
 		chain:chain,
 	}
 }
 
 
 func (ts *Node) Run() {
+	go ts.api.Run()
 	go ts.blockMgt.Run()
 	go ts.chain.Run()
 

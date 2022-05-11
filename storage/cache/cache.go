@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	lru "github.com/hashicorp/golang-lru"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"heyuanlong/blockchain-step/protocol"
 	"heyuanlong/blockchain-step/storage/database"
 	"path"
-	"google.golang.org/protobuf/proto"
 )
 
 // 增加一个缓存层
@@ -66,7 +67,7 @@ func (ts *DBCache) SetLastBlock(block *protocol.Block) (error) {
 
 func (ts *DBCache) AddBlock(block *protocol.Block) (error) {
 	ts.blockCache.Add(block.Hash,block)
-	ts.blockNumberCache.Add(block.BlockNum,[]byte(block.Hash))
+	ts.blockNumberCache.Add(block.BlockNum,block.Hash)
 
 	v, _ := proto.Marshal(block)
 	if err :=  ts.blockDB.Set([]byte(block.Hash),v); err != nil {
@@ -80,22 +81,22 @@ func (ts *DBCache) AddBlock(block *protocol.Block) (error) {
 	return nil
 }
 
-func (ts *DBCache) GetBlockByHash(hash []byte) (*protocol.Block,error) {
+func (ts *DBCache) GetBlockByHash(hash string) (*protocol.Block,error) {
 	v,ok := ts.blockCache.Get(hash)
-	if !ok {
-		value ,err := ts.blockDB.Get(hash)
-		if err != nil {
-			return nil, err
-		}
-		if len(value) == 0 {
-			return nil, errors.New("GetBlockByHash:链数据有问题?")
-		}
-		v = value
+	if ok {
+		return v.(*protocol.Block), nil
 	}
 
+	value ,err := ts.blockDB.Get([]byte(hash))
+	if err != nil {
+		return nil, err
+	}
+	if len(value) == 0 {
+		return nil, errors.New("GetBlockByHash:链数据有问题?")
+	}
 
 	var block protocol.Block
-	err := proto.Unmarshal(v.([]byte), &block)
+	err = proto.Unmarshal(value, &block)
 	return &block, err
 }
 
@@ -113,6 +114,9 @@ func (ts *DBCache) GetBlockByNumber(number uint64) (*protocol.Block,error) {
 		hash = value
 	}
 
-	return ts.GetBlockByHash(hash.([]byte))
+	log.Println(hash.(string))
+
+
+	return ts.GetBlockByHash(hash.(string))
 }
 

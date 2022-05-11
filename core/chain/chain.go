@@ -73,7 +73,7 @@ func (ts *Chain) loadChain() {
 		ParentHash: "0x00000000",
 		BlockNum:   0,
 		Txs:        []*protocol.Tx{},
-		Difficulty: "0001",
+		Difficulty: "000",
 		Nonce:      0,
 		TimeStamp:  uint64(time.Now().Unix()),
 	}
@@ -126,6 +126,13 @@ func (ts *Chain) getLastBlock() {
 
 //从区块池获取区块
 func (ts *Chain) readBlockPool() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Info(err)
+			log.Error(err)
+		}
+	}()
+
 	t := time.NewTicker(time.Second * 1)
 
 	for {
@@ -144,6 +151,7 @@ func (ts *Chain) dealNewBlock() {
 
 	block := ts.blockMgt.GetFisrt()
 	if block == nil {
+		log.Error("not find new block")
 		return
 	}
 	log.Info("dealNewBlock:",block.BlockNum)
@@ -160,19 +168,37 @@ func (ts *Chain) dealNewBlock() {
 	ts.blockMgt.Complete(block)
 
 	ts.curBlock = block
+
+	log.Info("ch c")
 	ts.commit(block)
 
 	//区块池移除
-	ts.blockMgt.DelFromPool(block)
+	log.Info("ch m")
+	if err := ts.blockMgt.DelFromPool(block);err != nil{
+		log.Info(err)
+		return
+	}else{
+		log.Info("移除块:",block.BlockNum)
+	}
 
 	//通知挖矿reset
+	log.Info("ch s")
 	ts.notifyDig <- struct{}{}
+	log.Info("ch e")
 }
 
-func (ts *Chain) commit(block *protocol.Block) {
+func (ts *Chain) commit(block *protocol.Block) error {
 	//db
-	ts.db.SetLastBlock(block)
-	ts.db.AddBlock(block)
+	if err := ts.db.SetLastBlock(block);err != nil{
+		log.Info(err)
+		return err
+	}
+	if err := ts.db.AddBlock(block);err != nil{
+		log.Info(err)
+		return err
+	}
+
+	return nil
 }
 
 
@@ -201,7 +227,7 @@ func (ts *Chain) buildDigBlock() *protocol.Block {
 	block := &protocol.Block{
 		ParentHash: ts.curBlock.Hash,
 		BlockNum:   ts.curBlock.BlockNum + 1,
-		Difficulty: "00000",
+		Difficulty: "000000",
 		Nonce:      0,
 		TimeStamp:  0,
 	}
@@ -283,6 +309,7 @@ func (ts *Chain) msgDealRespLastBlock(msgBytes []byte, p *p2p.Peer) {
 
 //发送到区块池，并通知chain去取
 func (ts *Chain) addToPool(block *protocol.Block) {
+	//todo 校验里面的tx
 	err := ts.blockMgt.AddToPool(block)
 	if err != nil {
 		log.Error(err,block.BlockNum)

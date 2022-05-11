@@ -4,21 +4,53 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+	"heyuanlong/blockchain-step/storage/cache"
 	"net/http"
 )
 
-func Start() {
-	r := NewRouteStruct("0.0.0.0", 7091)
+type ApiStruct struct {
+	port int
+	db *cache.DBCache
+}
+
+func NewApi(port int ,db *cache.DBCache) *ApiStruct{
+	return &ApiStruct{
+		port:port,
+		db:db,
+	}
+
+}
+
+
+
+func (ts * ApiStruct)Run() {
+	r := NewRouteStruct("0.0.0.0", ts.port)
 	//r.SetMiddleware(kroute.MiddlewareCrossDomain())
 	r.SetMiddleware(MiddlewareLoggerWithWriter(log.New().Out))
 
 	//开启prometheus监控
 	r.StartPrometheus()
 
-	r.Load(NewAccount())
+	r.Load(ts)
+
+
 
 	r.Run()
 }
+
+
+func (ts *ApiStruct) Load() []RouteWrapStruct {
+	m := make([]RouteWrapStruct, 0)
+
+	m = append(m, Wrap("GET|POST", "/account/create", ts.accountCreate))
+	m = append(m, Wrap("GET|POST", "/block/getByHash", ts.blockGetByHash))
+	m = append(m, Wrap("GET|POST", "/block/getByNumber", ts.blockGetByNumber))
+	m = append(m, Wrap("GET|POST", "/tx/send", ts.txSend))
+	m = append(m, Wrap("GET|POST", "/tx/broadcast", ts.txBroadcast))
+
+	return m
+}
+
 
 //-------------------------------------------------------------
 const (

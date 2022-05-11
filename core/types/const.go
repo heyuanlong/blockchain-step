@@ -8,3 +8,8 @@ const(
 
 	MSG_TYPE_BLOCK = "block"
 )
+
+
+const(
+	WALLET_DIR = "./walletdir"
+)

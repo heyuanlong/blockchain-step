@@ -1,5 +1,6 @@
 {
   "data_dir": "./datadir",
+  "api_port": 3000,
   "node": {
     "local": ":3001",
     "node_id": "3001",
