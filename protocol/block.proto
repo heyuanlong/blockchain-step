@@ -18,6 +18,7 @@ message block {
     string difficulty = 7;
     uint64 nonce = 8;
     uint64 time_stamp = 9;
+    address miner = 10;
 
 }
 
@@ -25,3 +26,5 @@ message block {
 message blockNumber {
     uint64 block_num = 1;
 }
+
+//   protoc --go_out=paths=source_relative:. protocol/block.proto

@@ -171,7 +171,7 @@ func (w *FileWallet) SignDataWithPassphrase(account accounts.Account, passphrase
 }
 
 func (w *FileWallet) SignTx(account accounts.Account, txObj *protocol.Tx, chainID *big.Int) (*protocol.Tx, error) {
-	hash, _ := tx.DeferTxMgt.Hash(txObj)
+	hash := tx.DeferTxMgt.Hash(txObj)
 	priv, err := w.Export(account)
 	if err != nil {
 		log.Error(account.Address.String(), "Export fail,maybe not in wallet:", err)

@@ -16,6 +16,13 @@ type DBCache struct {
 	blockCache *lru.Cache
 	blockDB    database.DB
 
+	txCache *lru.Cache
+	txDB    database.DB
+
+	accountCache *lru.Cache
+	accountDB    database.DB
+
+
 	blockNumberCache *lru.Cache
 }
 
@@ -30,6 +37,25 @@ func New(filepath string) *DBCache {
 		panic(err)
 	}
 
+	txCache, err := lru.New(1024)
+	if err != nil {
+		panic(err)
+	}
+	txDB, err := database.NewLevelDB(path.Join(filepath, "./stepblock/tx.db"))
+	if err != nil {
+		panic(err)
+	}
+
+
+	accountCache, err := lru.New(1024)
+	if err != nil {
+		panic(err)
+	}
+	accountDB, err := database.NewLevelDB(path.Join(filepath, "./stepblock/account.db"))
+	if err != nil {
+		panic(err)
+	}
+
 	blockNumberCache, err := lru.New(1024)
 	if err != nil {
 		panic(err)
@@ -39,13 +65,20 @@ func New(filepath string) *DBCache {
 	dbCache := &DBCache{
 		blockCache: blockCache,
 		blockDB:    blockDB,
+
+		txCache: txCache,
+		txDB:    txDB,
+
+		accountCache: accountCache,
+		accountDB:    accountDB,
+
 		blockNumberCache:    blockNumberCache,
 	}
 
 	return dbCache
 }
 
-//-----------------------------------------------------------------
+//--------------last_block---------------------------------------------------
 func (ts *DBCache) GetLastBlock() (*protocol.Block,error) {
 	v ,err := ts.blockDB.Get([]byte("last_block"))
 	if err != nil {
@@ -64,6 +97,9 @@ func (ts *DBCache) SetLastBlock(block *protocol.Block) (error) {
 	v, _ := proto.Marshal(block)
 	return ts.blockDB.Set([]byte("last_block"),v)
 }
+
+
+//-------------block-----------------------------------------------------------------
 
 func (ts *DBCache) AddBlock(block *protocol.Block) (error) {
 	ts.blockCache.Add(block.Hash,block)
@@ -119,4 +155,71 @@ func (ts *DBCache) GetBlockByNumber(number uint64) (*protocol.Block,error) {
 
 	return ts.GetBlockByHash(hash.(string))
 }
+
+
+//----------------tx----------------------------------------------------------------------
+func (ts *DBCache) AddTx(tx *protocol.Tx) (error) {
+	ts.txCache.Add(tx.Hash,tx)
+
+	v, _ := proto.Marshal(tx)
+	if err :=  ts.txDB.Set([]byte(tx.Hash),v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ts *DBCache) GetTxByHash(hash string) (*protocol.Tx,error) {
+	v,ok := ts.txCache.Get(hash)
+	if ok {
+		return v.(*protocol.Tx), nil
+	}
+
+	value ,err := ts.txDB.Get([]byte(hash))
+	if err != nil {
+		return nil, err
+	}
+	if len(value) == 0 {
+		return nil, errors.New("GetTxByHash:链数据有问题?")
+	}
+
+	var tx protocol.Tx
+	err = proto.Unmarshal(value, &tx)
+	return &tx, err
+}
+
+
+
+
+//----------------account---------------------------------------------------------------------
+func (ts *DBCache) AddAccount(account *protocol.Account) (error) {
+	ts.accountCache.Add(account.Id.Address,account)
+
+	v, _ := proto.Marshal(account)
+	if err :=  ts.accountDB.Set([]byte(account.Id.Address),v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ts *DBCache) GetAccount(address string) (*protocol.Account,error) {
+	v,ok := ts.accountCache.Get(address)
+	if ok {
+		return v.(*protocol.Account), nil
+	}
+
+	value ,err := ts.accountDB.Get([]byte(address))
+	if err != nil {
+		return nil, err
+	}
+	if len(value) == 0 {
+		return nil, errors.New("GetAccount:链数据有问题?")
+	}
+
+	var tx protocol.Account
+	err = proto.Unmarshal(value, &tx)
+	return &tx, err
+}
+
 

@@ -1,10 +1,12 @@
 package chain
 
 import (
+	"errors"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"heyuanlong/blockchain-step/common"
 	kblock "heyuanlong/blockchain-step/core/block"
+	"heyuanlong/blockchain-step/core/config"
 	"heyuanlong/blockchain-step/core/tx"
 	"heyuanlong/blockchain-step/core/types"
 	"heyuanlong/blockchain-step/p2p"
@@ -167,27 +169,60 @@ func (ts *Chain) dealNewBlock() {
 
 	ts.blockMgt.Complete(block)
 
-	ts.curBlock = block
 
-	log.Info("ch c")
-	ts.commit(block)
+	if err := ts.commit(block);err != nil{
+		log.Error("commitBlock fail:",block.BlockNum,",err:",err)
 
-	//区块池移除
-	log.Info("ch m")
-	if err := ts.blockMgt.DelFromPool(block);err != nil{
-		log.Info(err)
-		return
+		ts.blockMgt.DelFromPool(block)
+
 	}else{
-		log.Info("移除块:",block.BlockNum)
+		log.Info("commitBlock:",block.BlockNum)
+
+		ts.curBlock = block
+		ts.blockMgt.DelFromPool(block)
 	}
 
+
+
+
+
 	//通知挖矿reset
-	log.Info("ch s")
 	ts.notifyDig <- struct{}{}
-	log.Info("ch e")
+
+}
+
+func (ts *Chain) checkTx(txObj *protocol.Tx) error {
+	senderObj ,err :=ts.db.GetAccount(txObj.Sender.Address)
+	if err != nil{
+		log.Error(err)
+		return err
+	}
+	if senderObj.Id.Address == "" {
+		log.Error("sender not find in chain block")
+		return errors.New("sender not find in chain block")
+	}
+	if senderObj.Nonce != txObj.Nonce{
+		log.Error("nonce 错误")
+		return errors.New("nonce 错误")
+	}
+	if  txObj.Amount > senderObj.Balance {
+		log.Error("发送的金额大于余额")
+		return errors.New("发送的金额大于余额")
+	}
+
+	return nil
 }
 
 func (ts *Chain) commit(block *protocol.Block) error {
+
+	for _, txObj := range block.Txs {
+		if err := ts.checkTx(txObj);err!= nil{
+			//txPool移除
+			tx.DeferTxMgt.DelFromPool(txObj)
+			return err
+		}
+	}
+
 	//db
 	if err := ts.db.SetLastBlock(block);err != nil{
 		log.Info(err)
@@ -197,6 +232,57 @@ func (ts *Chain) commit(block *protocol.Block) error {
 		log.Info(err)
 		return err
 	}
+
+	//todo 快照与回滚
+	for _, txObj := range block.Txs {
+
+		//tx 数据提交
+		senderAccount ,_ :=ts.db.GetAccount(txObj.Sender.Address)
+		toAccount ,_ :=ts.db.GetAccount(txObj.To.Address)
+
+		//说明账户不存在 需要新建一个账户
+		if toAccount == nil{
+			toAccount = &protocol.Account{
+				Id:          txObj.To,
+				Balance:     0,
+				Nonce:     0,
+				AccountType: int32(protocol.AccountType_Normal),
+			}
+		}
+
+		senderAccount.Balance -= txObj.Amount
+		senderAccount.Nonce += 1
+		toAccount.Balance += txObj.Amount
+
+		ts.db.AddAccount(senderAccount)
+		ts.db.AddAccount(toAccount)
+
+
+		//todo 交易收据验证
+
+		//交易存储
+		ts.db.AddTx(txObj)
+
+		//txPool移除
+		tx.DeferTxMgt.DelFromPool(txObj)
+	}
+
+
+	//挖矿奖励
+	if block.Miner != nil && block.Miner.Address != ""{
+		minerAccount ,_ :=ts.db.GetAccount(block.Miner.Address)
+		if minerAccount == nil{
+			minerAccount = &protocol.Account{
+				Id:          block.Miner,
+				Balance:     0,
+				Nonce:     	 0,
+				AccountType: int32(protocol.AccountType_Normal),
+			}
+		}
+		minerAccount.Balance += types.DIG_REWARD
+		ts.db.AddAccount(minerAccount)
+	}
+
 
 	return nil
 }
@@ -230,10 +316,11 @@ func (ts *Chain) buildDigBlock() *protocol.Block {
 		Difficulty: "000000",
 		Nonce:      0,
 		TimeStamp:  0,
+		Miner: &protocol.Address{Address: config.Config.Miner},
 	}
 
-	//加载交易
 	block.Txs = tx.DeferTxMgt.Gets(200)
+	log.Info("加载交易:",len(block.Txs))
 
 	ts.blockMgt.Complete(block)
 	return block

@@ -2,13 +2,11 @@ package tx
 
 import (
 	"errors"
-	"heyuanlong/blockchain-step/common"
 	"heyuanlong/blockchain-step/protocol"
 )
 
 func (ts *TxMgt) AddToPool(tx *protocol.Tx) (error) {
-	hash ,_ := ts.Hash(tx)
-	txid := common.Bytes2HexWithPrefix(hash)
+	txid := tx.Hash
 
 	ts.Lock()
 	defer ts.Unlock()
@@ -27,8 +25,7 @@ func (ts *TxMgt) AddToPool(tx *protocol.Tx) (error) {
 }
 
 func (ts *TxMgt) DelFromPool(tx *protocol.Tx) (error) {
-	hash ,_ := ts.Hash(tx)
-	txid := common.Bytes2HexWithPrefix(hash)
+	txid := tx.Hash
 
 	ts.Lock()
 	defer ts.Unlock()
@@ -47,8 +44,7 @@ func (ts *TxMgt) IsInPool(tx *protocol.Tx) (bool) {
 	ts.RLock()
 	defer ts.RUnlock()
 
-	hash ,_ := ts.Hash(tx)
-	txid := common.Bytes2HexWithPrefix(hash)
+	txid := tx.Hash
 
 	_, ok := ts.txPool[txid]
 	return ok

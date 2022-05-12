@@ -13,3 +13,7 @@ const(
 const(
 	WALLET_DIR = "./walletdir"
 )
+
+const(
+	DIG_REWARD = 500
+)

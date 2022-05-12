@@ -43,8 +43,11 @@ func (ts *ApiStruct) Load() []RouteWrapStruct {
 	m := make([]RouteWrapStruct, 0)
 
 	m = append(m, Wrap("GET|POST", "/account/create", ts.accountCreate))
+	m = append(m, Wrap("GET|POST", "/account/info", ts.accountInfo))
+
 	m = append(m, Wrap("GET|POST", "/block/getByHash", ts.blockGetByHash))
 	m = append(m, Wrap("GET|POST", "/block/getByNumber", ts.blockGetByNumber))
+
 	m = append(m, Wrap("GET|POST", "/tx/send", ts.txSend))
 	m = append(m, Wrap("GET|POST", "/tx/broadcast", ts.txBroadcast))
 

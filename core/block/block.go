@@ -70,7 +70,7 @@ func (ts *BlockMgt) Hash(block *protocol.Block) ([]byte) {
 func (ts *BlockMgt) MerkleRoot(block *protocol.Block) []byte {
 	txHashs := make([][]byte, 0, len(block.Txs))
 	for i := range block.Txs {
-		hash ,_ := tx.DeferTxMgt.Hash(block.Txs[i])
+		hash := tx.DeferTxMgt.Hash(block.Txs[i])
 		txHashs = append(txHashs,hash )
 	}
 	return common.Merkel(txHashs)

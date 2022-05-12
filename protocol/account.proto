@@ -1,17 +1,19 @@
 syntax = "proto3";
 
-option java_multiple_files = true;
-option java_package = "model";
-option go_package = "./;model";
+package protocol;
 
-import "transaction.proto";
+option go_package = "heyuanlong/block-step/protocol;protocol";
+
+
+import "protocol/transaction.proto";
 
 message Account {
     address id = 1;
-    bytes code = 2;
-    amount balance = 3;
-    int32 account_type = 4;
-    bytes publick_key = 5;
+    uint64 nonce = 2;
+    bytes code = 3;
+    uint64 balance = 4;
+    int32 account_type = 5;
+
 }
 
 
@@ -23,3 +25,7 @@ enum AccountType {
     Admin = 4; // 管理员账户
     Verifier = 8; // 验证者账户
 }
+
+
+//   protoc --go_out=paths=source_relative:. protocol/account.proto
+

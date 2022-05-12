@@ -3,8 +3,10 @@ package tx
 import (
 	"crypto/sha256"
 	"fmt"
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"heyuanlong/blockchain-step/common"
 	"heyuanlong/blockchain-step/crypto"
 	"heyuanlong/blockchain-step/protocol"
 	"sync"
@@ -24,6 +26,13 @@ type TxMgt struct {
 	txPool map[string]*protocol.Tx
 }
 
+func (ts *TxMgt) Complete(tx *protocol.Tx){
+
+	//block.Hash
+	tx.Hash = common.Bytes2HexWithPrefix(ts.Hash(tx))
+}
+
+
 func (ts *TxMgt) Bytes(tx *protocol.Tx) ([]byte, error) {
 	b, err := proto.Marshal(tx)
 	if err != nil {
@@ -34,6 +43,12 @@ func (ts *TxMgt) Bytes(tx *protocol.Tx) ([]byte, error) {
 }
 
 func (ts *TxMgt) Add(tx *protocol.Tx)error {
+
+	hash := common.Bytes2HexWithPrefix(ts.Hash(tx))
+	if hash != tx.Hash {
+		log.Error("hash != txObj.Hash")
+		return  errors.New("hash != txObj.Hash")
+	}
 
 	if tx.Sender == nil || tx.Sender.Address == "" {
 		return fmt.Errorf("交易数据from地址为空")
@@ -48,6 +63,7 @@ func (ts *TxMgt) Add(tx *protocol.Tx)error {
 
 	//todo Sender 是否在钱包里
 	//todo 检验 nonce
+	//todo 模拟检验amount交易
 
 	//检验签名
 	accountAddr,err:=ts.Sender(tx)
@@ -71,7 +87,7 @@ func (ts *TxMgt) Add(tx *protocol.Tx)error {
 	return nil
 }
 
-func (ts *TxMgt) Hash(tx *protocol.Tx) ([]byte,error) {
+func (ts *TxMgt) Hash(tx *protocol.Tx) ([]byte) {
 	t := &protocol.Tx{
 		To:        tx.To,
 		Amount:    tx.Amount,
@@ -79,23 +95,18 @@ func (ts *TxMgt) Hash(tx *protocol.Tx) ([]byte,error) {
 		TimeStamp: tx.TimeStamp,
 		Input:     tx.Input,
 	}
-	b, err := proto.Marshal(t)
-	if err != nil {
-		return []byte{}, err
-	}
+	b, _ := proto.Marshal(t)
+
 	sh := sha256.New()
 	sh.Write(b)
 	hash := sh.Sum(nil)
 
-	return hash,nil
+	return hash
 }
 
 //检验并获取sender
 func (ts *TxMgt) Sender(tx *protocol.Tx) (crypto.Address, error) {
-	hash ,err := ts.Hash(tx)
-	if err != nil {
-		return crypto.Address{}, err
-	}
+	hash  := ts.Hash(tx)
 
 	pub,err  :=crypto.Ecrecover(hash,tx.Sign)
 	if err != nil{

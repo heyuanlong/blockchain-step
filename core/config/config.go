@@ -12,6 +12,7 @@ type jsonConfig struct {
 	Node nodeConfig `json:"node"`
 	DataDir string `json:"data_dir"`
 	ApiPort int64 `json:"api_port"`
+	Miner string `json:"miner"`
 }
 
 type nodeConfig struct {

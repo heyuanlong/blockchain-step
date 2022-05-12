@@ -17,4 +17,8 @@ message tx {
     bytes input = 5;
     bytes sign = 6;
     uint64 time_stamp = 7;
+    string hash = 8;
 }
+
+//   protoc --go_out=paths=source_relative:. protocol/transaction.proto
+
