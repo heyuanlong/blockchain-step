@@ -1,6 +1,7 @@
 {
   "data_dir": "./datadir",
   "api_port": 3000,
+  "miner": "0x2C35a52A51B742C3c1218e6c053059268c85BaB7",
   "node": {
     "local": ":3001",
     "node_id": "3001",
